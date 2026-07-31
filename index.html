@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>咋啦</title>
+  <meta name="description" content="一个接住情绪、再轻轻递给你一个出口的地方。" />
+  <meta name="theme-color" content="#0d1014" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230d1014'/%3E%3Crect x='12' y='24' width='40' height='22' rx='5' fill='none' stroke='%23eabd77' stroke-width='2.5'/%3E%3Cline x1='26' y1='30' x2='38' y2='30' stroke='%23eabd77' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body data-view="intro">
+  <!-- 背景:一盏暖灯 + 夜色噪点 -->
+  <div class="lamp" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <main class="stage">
+
+    <!-- 开屏:抽屉柜 -->
+    <section class="view view-intro" aria-label="开屏">
+      <div class="cabinet" id="cabinet" role="button" tabindex="0" aria-label="拉开抽屉，咋啦？">
+        <div class="drawer" id="drawer">
+          <div class="drawer-face">
+            <div class="drawer-handle" aria-hidden="true"></div>
+            <h1 class="zala">咋啦？</h1>
+          </div>
+        </div>
+      </div>
+      <p class="hint" id="introHint">轻轻拉开</p>
+    </section>
+
+    <!-- 投放情绪 -->
+    <section class="view view-input" aria-label="说出此刻">
+      <p class="lead">把此刻放进来。</p>
+      <textarea id="feelingText" rows="4" placeholder="今天是咋啦……（想说啥就说啥，说完可以让它消失）" maxlength="600"></textarea>
+      <div class="meta">
+        <div class="chips" id="placeChips" role="group" aria-label="此刻在哪">
+          <span class="chip-label">在哪：</span>
+          <button class="chip" data-place="家">家</button>
+          <button class="chip" data-place="公司">公司</button>
+          <button class="chip" data-place="路上">路上</button>
+          <button class="chip" data-place="别处">别处</button>
+        </div>
+      </div>
+      <button class="primary" id="submitBtn">放进抽屉</button>
+      <button class="ghost" id="toMapBtn">看看我的情绪地图</button>
+    </section>
+
+    <!-- 接住中 -->
+    <section class="view view-loading" aria-label="接住中" aria-live="polite">
+      <div class="breathing"></div>
+      <p class="loading-word" id="loadingWord">正在接住……</p>
+    </section>
+
+    <!-- 结果:接住 + 出口抽屉 -->
+    <section class="view view-result" aria-label="接住与出口">
+      <div class="echo-wrap">
+        <span class="weather-chip" id="weatherChip"></span>
+        <p class="echo" id="echoText"></p>
+        <p class="emotion" id="emotionText"></p>
+      </div>
+
+      <div class="drawers" id="drawersWrap">
+        <article class="mini-drawer" data-kind="song">
+          <span class="mini-icon">♪</span>
+          <div class="mini-body">
+            <p class="mini-title" id="songTitle"></p>
+            <p class="mini-sub" id="songWhy"></p>
+            <a class="mini-link" id="songLink" target="_blank" rel="noopener">去听</a>
+          </div>
+        </article>
+        <article class="mini-drawer" data-kind="step">
+          <span class="mini-icon">›</span>
+          <div class="mini-body">
+            <p class="mini-title" id="stepAction"></p>
+            <p class="mini-sub" id="stepPermission"></p>
+          </div>
+        </article>
+        <article class="mini-drawer" data-kind="words">
+          <span class="mini-icon">"</span>
+          <div class="mini-body">
+            <p class="mini-title" id="wordsText"></p>
+          </div>
+        </article>
+        <article class="mini-drawer" data-kind="release">
+          <span class="mini-icon">~</span>
+          <div class="mini-body">
+            <p class="mini-title" id="releaseAction"></p>
+          </div>
+        </article>
+      </div>
+
+      <div class="result-actions">
+        <button class="primary" id="keepBtn">收进情绪地图</button>
+        <button class="ghost" id="burnBtn">让它消失</button>
+      </div>
+    </section>
+
+    <!-- 情绪地图(v1:时间热力图 + 明细) -->
+    <section class="view view-map" aria-label="情绪地图">
+      <p class="lead">你的情绪地图</p>
+      <p class="map-sub" id="mapSub">这里只留你亲手收进来的。</p>
+      <div class="heatmap-wrap">
+        <div class="heatmap" id="heatmap" aria-hidden="true"></div>
+        <div class="heat-legend"><span>淡</span><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i><i class="l5"></i><span>浓</span></div>
+      </div>
+      <div class="map-list" id="mapList"></div>
+      <button class="ghost" id="backHomeBtn">回到抽屉</button>
+    </section>
+
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>

@@ -1,0 +1,455 @@
+/* ============ 「咋啦」视觉基调:深夜独处的房间,一盏暖灯 ============ */
+
+:root {
+  --ink: #0d1014;          /* 墨蓝近黑 */
+  --ink-2: #141922;        /* 抽屉体 */
+  --ink-3: #1c2431;        /* 抽屉面 */
+  --wood-a: #2a2016;       /* 抽屉木色 · 暖 */
+  --wood-b: #1a140d;       /* 抽屉木色 · 深 */
+  --amber: #eabd77;        /* 唯一亮色:暖灯 */
+  --amber-soft: #f4dcae;
+  --paper: #e2d7c7;        /* 文字暖白 */
+  --paper-dim: #948c7c;    /* 次级文字 */
+  --line: rgba(234, 189, 119, 0.15);
+  --glow: rgba(234, 189, 119, 0.38);
+  --radius: 18px;
+  --serif: "Songti SC", "STSong", "STSongti-SC-Regular", "SimSun", Georgia, "Times New Roman", serif;
+  --sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html, body { height: 100%; }
+
+body {
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--sans);
+  overflow: hidden;
+  position: relative;
+  line-height: 1.7;
+}
+
+/* 一盏暖灯的光晕 */
+.lamp {
+  position: fixed;
+  top: -20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120vmax;
+  height: 120vmax;
+  background: radial-gradient(circle at 50% 35%,
+      rgba(233, 184, 114, 0.16) 0%,
+      rgba(233, 184, 114, 0.05) 26%,
+      transparent 55%);
+  pointer-events: none;
+  animation: lampBreath 9s var(--ease) infinite;
+}
+@keyframes lampBreath {
+  0%, 100% { opacity: 0.75; }
+  50%      { opacity: 1; }
+}
+
+/* 夜色噪点(纸质感,去塑料感) */
+.grain {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+}
+
+/* 舞台:一次只呼吸一件事 */
+.stage {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+}
+
+.view {
+  position: absolute;
+  width: min(560px, 92vw);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(14px);
+  transition: opacity 0.7s var(--ease), transform 0.7s var(--ease);
+  pointer-events: none;
+}
+body[data-view="intro"]   .view-intro,
+body[data-view="input"]   .view-input,
+body[data-view="loading"] .view-loading,
+body[data-view="result"]  .view-result,
+body[data-view="map"]     .view-map {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* ============ 开屏:抽屉柜 ============ */
+.cabinet {
+  width: min(420px, 82vw);
+  perspective: 1500px;
+  cursor: pointer;
+  position: relative;
+}
+/* 抽屉拉开时,柜内溢出的暖光 */
+.cabinet::before {
+  content: "";
+  position: absolute;
+  inset: -8% -6% 10%;
+  border-radius: var(--radius);
+  background: radial-gradient(ellipse at 50% 60%, var(--glow), transparent 60%);
+  opacity: 0;
+  transition: opacity 0.9s var(--ease);
+  pointer-events: none;
+}
+.cabinet.opening::before { opacity: 1; }
+
+.drawer {
+  transform-style: preserve-3d;
+  transition: transform 1.05s var(--spring), opacity 0.9s var(--ease);
+}
+.drawer-face {
+  position: relative;
+  height: 240px;
+  border-radius: var(--radius);
+  /* 木纹质感:斜向暖木色 + 细纹理 */
+  background:
+    repeating-linear-gradient(96deg, rgba(255,255,255,0.015) 0 2px, transparent 2px 7px),
+    linear-gradient(158deg, #2f2417, var(--wood-a) 40%, var(--wood-b));
+  border: 1px solid var(--line);
+  box-shadow:
+    inset 0 1px 0 rgba(244, 220, 174, 0.10),
+    inset 0 -30px 50px rgba(0, 0, 0, 0.4),
+    0 34px 66px rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+/* 面板上一层极淡的暖光,让"咋啦?"像被灯照着 */
+.drawer-face::after {
+  content: "";
+  position: absolute;
+  top: -40%;
+  left: 50%;
+  width: 140%;
+  height: 120%;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at 50% 40%, rgba(244,220,174,0.10), transparent 55%);
+  pointer-events: none;
+}
+.drawer-handle {
+  position: absolute;
+  top: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 88px;
+  height: 8px;
+  border-radius: 6px;
+  background: linear-gradient(var(--amber-soft), #b9884a);
+  opacity: 0.85;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.3);
+}
+.zala {
+  font-family: var(--serif);
+  font-size: 66px;
+  font-weight: 500;
+  letter-spacing: 5px;
+  color: var(--amber-soft);
+  text-shadow: 0 0 30px rgba(234, 189, 119, 0.4);
+  transition: transform 0.6s var(--ease);
+}
+.cabinet:hover .zala { transform: translateY(-2px); }
+/* 拉开动作:向下滑出 + 轻微翻转,带一点回弹 */
+.cabinet.opening .drawer {
+  transform: translateY(122%) rotateX(26deg);
+  opacity: 0;
+}
+.hint {
+  color: var(--paper-dim);
+  font-size: 14px;
+  letter-spacing: 3px;
+  animation: floatHint 2.6s var(--ease) infinite;
+}
+@keyframes floatHint {
+  0%, 100% { transform: translateY(0); opacity: 0.5; }
+  50%      { transform: translateY(5px); opacity: 0.9; }
+}
+
+/* ============ 通用文字 ============ */
+.lead {
+  font-family: var(--serif);
+  font-size: 26px;
+  letter-spacing: 2px;
+  color: var(--amber-soft);
+}
+.map-sub, .map-sub { color: var(--paper-dim); font-size: 13px; }
+
+/* ============ 情绪热力图 ============ */
+.heatmap-wrap {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.heatmap {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(7, 1fr);
+  gap: 4px;
+  padding: 6px;
+}
+.heat-cell {
+  width: 13px;
+  height: 13px;
+  border-radius: 3px;
+  background: var(--amber);
+  opacity: 0.08;                 /* 空白日:极淡 */
+  border: 1px solid rgba(234,189,119,0.08);
+  transition: transform 0.2s var(--ease), opacity 0.3s var(--ease);
+}
+.heat-cell[data-i]:hover { transform: scale(1.35); }
+.heat-cell[data-i="1"] { opacity: 0.28; }
+.heat-cell[data-i="2"] { opacity: 0.45; }
+.heat-cell[data-i="3"] { opacity: 0.62; }
+.heat-cell[data-i="4"] { opacity: 0.80; }
+.heat-cell[data-i="5"] { opacity: 1; box-shadow: 0 0 8px var(--glow); }
+.heat-legend {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--paper-dim);
+}
+.heat-legend i {
+  width: 11px; height: 11px; border-radius: 3px; background: var(--amber);
+}
+.heat-legend .l1 { opacity: 0.28; }
+.heat-legend .l2 { opacity: 0.45; }
+.heat-legend .l3 { opacity: 0.62; }
+.heat-legend .l4 { opacity: 0.80; }
+.heat-legend .l5 { opacity: 1; }
+
+/* ============ 输入 ============ */
+textarea {
+  width: 100%;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px;
+  color: var(--paper);
+  font-family: var(--sans);
+  font-size: 16px;
+  resize: none;
+  outline: none;
+  transition: border-color 0.4s var(--ease), background 0.4s var(--ease);
+}
+textarea:focus {
+  border-color: rgba(233, 184, 114, 0.4);
+  background: rgba(255,255,255,0.05);
+}
+textarea::placeholder { color: var(--paper-dim); }
+
+.meta { width: 100%; }
+.chips { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.chip-label { color: var(--paper-dim); font-size: 13px; margin-right: 2px; }
+.chip {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--paper-dim);
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.3s var(--ease);
+}
+.chip:hover { color: var(--paper); }
+.chip.active {
+  color: var(--ink);
+  background: var(--amber);
+  border-color: var(--amber);
+}
+
+/* 按钮 */
+button { font-family: var(--sans); }
+.primary {
+  width: 100%;
+  padding: 15px;
+  border: none;
+  border-radius: var(--radius);
+  background: linear-gradient(var(--amber), #cf9b57);
+  color: #241a0c;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: transform 0.25s var(--ease), box-shadow 0.3s var(--ease);
+  box-shadow: 0 10px 30px rgba(233, 184, 114, 0.18);
+}
+.primary:hover { transform: translateY(-2px); box-shadow: 0 16px 40px rgba(233,184,114,0.28); }
+.primary:active { transform: translateY(0); }
+.ghost {
+  background: none;
+  border: none;
+  color: var(--paper-dim);
+  font-size: 14px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: color 0.3s var(--ease);
+}
+.ghost:hover { color: var(--paper); }
+
+/* ============ 接住中:呼吸 ============ */
+.breathing {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(233,184,114,0.5), transparent 70%);
+  animation: breathe 3.4s var(--ease) infinite;
+}
+@keyframes breathe {
+  0%, 100% { transform: scale(0.7); opacity: 0.5; }
+  50%      { transform: scale(1.1); opacity: 1; }
+}
+.loading-word { color: var(--paper-dim); letter-spacing: 3px; font-size: 15px; }
+
+/* ============ 结果 ============ */
+.echo-wrap { text-align: center; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.weather-chip {
+  font-size: 12px;
+  color: var(--amber);
+  border: 1px solid var(--line);
+  padding: 3px 12px;
+  border-radius: 999px;
+  letter-spacing: 1px;
+}
+.echo {
+  font-family: var(--serif);
+  font-size: 22px;
+  line-height: 1.9;
+  color: var(--paper);
+}
+.emotion { color: var(--paper-dim); font-size: 14px; letter-spacing: 1px; }
+
+.drawers { width: 100%; display: flex; flex-direction: column; gap: 12px; }
+.mini-drawer {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px 18px;
+  opacity: 0;
+  transform: translateY(10px);
+  animation: slideIn 0.6s var(--ease) forwards;
+}
+.mini-drawer:nth-child(1) { animation-delay: 0.05s; }
+.mini-drawer:nth-child(2) { animation-delay: 0.15s; }
+.mini-drawer:nth-child(3) { animation-delay: 0.25s; }
+.mini-drawer:nth-child(4) { animation-delay: 0.35s; }
+@keyframes slideIn { to { opacity: 1; transform: translateY(0); } }
+
+.mini-icon {
+  font-family: var(--serif);
+  color: var(--amber);
+  font-size: 20px;
+  line-height: 1.4;
+  width: 22px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.mini-body { flex: 1; }
+.mini-title { font-size: 16px; color: var(--paper); }
+.mini-sub { font-size: 13px; color: var(--paper-dim); margin-top: 4px; }
+.mini-link {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--amber);
+  text-decoration: none;
+  border-bottom: 1px solid var(--line);
+}
+
+.result-actions { width: 100%; display: flex; flex-direction: column; gap: 12px; margin-top: 6px; }
+
+/* 焚毁动画 */
+body.burning .view-result { animation: burnAway 0.9s var(--ease) forwards; }
+@keyframes burnAway {
+  to { opacity: 0; transform: translateY(-30px) scale(0.96); filter: blur(6px); }
+}
+
+/* ============ 情绪地图 ============ */
+.map-list {
+  width: 100%;
+  max-height: 46vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-right: 4px;
+}
+.map-entry {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 16px;
+}
+.map-when { font-size: 12px; color: var(--paper-dim); min-width: 92px; }
+.map-weather { font-family: var(--serif); color: var(--amber-soft); font-size: 15px; flex: 1; }
+.map-place { font-size: 12px; color: var(--paper-dim); }
+.map-empty { color: var(--paper-dim); font-size: 14px; padding: 30px 0; text-align: center; }
+
+/* 危机态:收起出口,只留接住 */
+body.crisis .drawers,
+body.crisis #keepBtn { display: none; }
+.crisis-help {
+  width: 100%;
+  text-align: center;
+  border: 1px solid rgba(233,184,114,0.4);
+  border-radius: 14px;
+  padding: 18px;
+  color: var(--amber-soft);
+  font-size: 15px;
+  line-height: 1.9;
+}
+.crisis-help strong { color: var(--amber); font-size: 18px; letter-spacing: 1px; }
+
+@media (max-width: 480px) {
+  .zala { font-size: 52px; }
+  .drawer-face { height: 200px; }
+  .lead { font-size: 22px; }
+}
+
+/* 可访问性:清晰的键盘焦点 */
+:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+.cabinet:focus-visible { outline-offset: 8px; }
+
+/* 尊重"减少动态效果"偏好 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

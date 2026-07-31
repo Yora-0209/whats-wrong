@@ -1,0 +1,11 @@
+{
+  "name": "zala",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "咋啦 — 一个接住情绪、再轻轻递给你一个出口的地方。",
+  "scripts": {
+    "dev": "npx --yes serve@latest .",
+    "start": "npx --yes serve@latest ."
+  }
+}
