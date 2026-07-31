@@ -127,81 +127,100 @@ body[data-view="map"]     .view-map {
 }
 .portal-scene.opening .portal { opacity: 1; transform: scale(1); }
 
-/* 旋转的魔法漩涡(多层叠加) */
-.vortex {
+/* 缓慢旋转的银河漩涡(多层旋臂 + 星尘) */
+.galaxy {
   position: absolute; left: 50%; top: 50%;
-  width: 150%; aspect-ratio: 1; transform: translate(-50%, -50%);
+  width: 176%; aspect-ratio: 1; transform: translate(-50%, -50%);
   border-radius: 50%;
-  -webkit-mask: radial-gradient(circle, #000 18%, rgba(0,0,0,0.55) 42%, transparent 70%);
-          mask: radial-gradient(circle, #000 18%, rgba(0,0,0,0.55) 42%, transparent 70%);
+  -webkit-mask: radial-gradient(circle, #000 8%, #000 36%, transparent 70%);
+          mask: radial-gradient(circle, #000 8%, #000 36%, transparent 70%);
+  animation: galaxySpin 64s linear infinite;
+}
+.arm {
+  position: absolute; inset: 0; border-radius: 50%;
+}
+.arm1 {
   background: conic-gradient(from 0deg,
-      #1b1550, #4b2f9e, var(--violet), var(--magenta),
-      var(--cyan), #234e9e, #1b1550);
-  filter: blur(5px);
-  animation: swirl 16s linear infinite, wobble 7s var(--ease) infinite;
-  opacity: 0.9;
+    transparent 0deg, rgba(90,210,255,0.55) 38deg, transparent 118deg,
+    rgba(124,108,255,0.5) 196deg, transparent 286deg,
+    rgba(90,210,255,0.4) 338deg, transparent 360deg);
+  filter: blur(11px);
 }
-.vortex2 {
-  width: 118%; filter: blur(14px); opacity: 0.55;
-  mix-blend-mode: screen; animation: swirl 24s linear infinite reverse, wobble 9s var(--ease) infinite;
+.arm2 {
+  background: conic-gradient(from 70deg,
+    transparent 0deg, rgba(255,110,199,0.34) 80deg, transparent 168deg,
+    rgba(255,196,150,0.3) 250deg, transparent 330deg);
+  filter: blur(18px); opacity: 0.85;
+  animation: galaxySpin 96s linear infinite reverse;
 }
-.vortex3 {
-  width: 185%; filter: blur(24px); opacity: 0.3;
-  animation: swirl 34s linear infinite;
+.arm3 {
+  background: repeating-conic-gradient(from 0deg,
+    rgba(255,255,255,0.05) 0deg 3deg, transparent 3deg 14deg);
+  filter: blur(3px); opacity: 0.25;
 }
-@keyframes swirl { to { transform: translate(-50%, -50%) rotate(360deg); } }
-@keyframes wobble {
-  0%,100% { opacity: 0.9; }
-  50%     { opacity: 0.55; }
-}
+@keyframes galaxySpin { to { transform: rotate(360deg); } }
 
-/* 漩涡中心的星核 */
+/* 银河中心的亮核 */
 .portal-core {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-  width: 42%; aspect-ratio: 1; border-radius: 50%;
-  background: radial-gradient(circle, rgba(246,221,176,0.55), rgba(124,108,255,0.18) 45%, transparent 70%);
-  animation: corePulse 5s var(--ease) infinite;
+  width: 34%; aspect-ratio: 1; border-radius: 50%;
+  background: radial-gradient(circle,
+    rgba(255,255,255,0.9) 0%, rgba(170,220,255,0.55) 30%,
+    rgba(124,108,255,0.22) 55%, transparent 72%);
+  animation: corePulse 6s var(--ease) infinite;
   pointer-events: none;
 }
 @keyframes corePulse {
-  0%,100% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.7; }
-  50%     { transform: translate(-50%, -50%) scale(1.12); opacity: 1; }
+  0%,100% { transform: translate(-50%, -50%) scale(0.88); opacity: 0.8; }
+  50%     { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
 }
 
 /* 星辰 */
 .stars { position: absolute; inset: 0; pointer-events: none; }
 .stars i {
   position: absolute; width: 2px; height: 2px; border-radius: 50%;
-  background: #fff; opacity: 0; animation: twinkle 4s var(--ease) infinite;
+  background: #fff; box-shadow: 0 0 4px rgba(255,255,255,0.8);
+  opacity: 0; animation: twinkle 4s var(--ease) infinite;
 }
 @keyframes twinkle {
-  0%, 100% { opacity: 0; transform: scale(0.6); }
-  50%      { opacity: 0.9; transform: scale(1); }
+  0%,100% { opacity: 0; transform: scale(0.5); }
+  50%     { opacity: 0.95; transform: scale(1); }
 }
 
-/* 咋啦:开屏后从漩涡中缓缓渐强浮现 */
+/* 标题:咋啦 + 英文副标题,开屏后从银河中缓缓渐强浮现 */
+.title {
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%) scale(0.8);
+  text-align: center; opacity: 0; pointer-events: none;
+}
 .zala {
-  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(0.7);
   font-family: var(--serif); font-weight: 500;
-  font-size: clamp(48px, 12vw, 74px); letter-spacing: 6px;
-  color: var(--amber-soft);
-  text-shadow: 0 0 26px rgba(246,221,176,0.55), 0 0 60px rgba(124,108,255,0.5);
-  opacity: 0;
-  pointer-events: none;
+  font-size: clamp(46px, 11vw, 70px); letter-spacing: 12px;
+  color: #fff;
+  text-shadow: 0 0 30px rgba(160,205,255,0.65), 0 0 72px rgba(124,108,255,0.55);
+  padding-left: 12px; /* 抵消字距,视觉居中 */
 }
-.portal-scene.opening .zala {
-  animation: zalaEmerge 2.4s var(--ease) 0.6s forwards, zalaFloat 6s var(--ease) 3s infinite;
+.zala-en {
+  margin-top: 12px;
+  font-family: "Baskerville", "Didot", "Hoefler Text", "Times New Roman", Georgia, serif;
+  font-style: italic; font-weight: 300;
+  font-size: clamp(13px, 3.2vw, 19px); letter-spacing: 5px;
+  color: rgba(226,232,255,0.82);
+  text-shadow: 0 0 18px rgba(124,108,255,0.5);
 }
-@keyframes zalaEmerge {
-  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.7); filter: blur(8px); letter-spacing: 16px; }
-  100% { opacity: 1; transform: translate(-50%, -50%) scale(1);   filter: blur(0);   letter-spacing: 6px; }
+.portal-scene.opening .title {
+  animation: titleEmerge 2.6s var(--ease) 0.6s forwards, titleFloat 7s var(--ease) 3.2s infinite;
 }
-@keyframes zalaFloat {
+@keyframes titleEmerge {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.72); filter: blur(9px); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1);    filter: blur(0); }
+}
+@keyframes titleFloat {
   0%,100% { transform: translate(-50%, -50%) scale(1); }
-  50%     { transform: translate(-50%, -52%) scale(1.02); }
+  50%     { transform: translate(-50%, -52%) scale(1.015); }
 }
 
-/* 抽屉本体(盖在漩涡上,拉开时滑落) */
+/* 抽屉本体(盖在银河上,拉开时滑落)· 木质 + 金边 + 缝隙透光 */
 .drawer {
   position: absolute; inset: 0; z-index: 3;
   transition: transform 1s var(--spring), opacity 0.8s var(--ease);
@@ -209,35 +228,56 @@ body[data-view="map"]     .view-map {
 .drawer-front {
   position: absolute; inset: 0; border-radius: 26px;
   background:
-    linear-gradient(180deg, rgba(255,255,255,0.06), transparent 22%),
-    linear-gradient(155deg, #24203a, #17142a 55%, #0f0c1c);
-  border: 1px solid rgba(255,255,255,0.10);
+    linear-gradient(180deg, rgba(255,238,214,0.12), transparent 16%),
+    repeating-linear-gradient(94deg, rgba(0,0,0,0.16) 0 3px, rgba(255,255,255,0.02) 3px 7px),
+    linear-gradient(150deg, #3c2d1f, #2a2015 46%, #170e07);
+  border: 1px solid rgba(214,172,110,0.4);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.12),
-    inset 0 -40px 60px rgba(0,0,0,0.5),
-    0 40px 80px rgba(0,0,0,0.6);
+    inset 0 1px 0 rgba(255,224,176,0.28),
+    inset 0 -52px 74px rgba(0,0,0,0.55),
+    0 46px 92px rgba(0,0,0,0.66);
   display: flex; align-items: center; justify-content: center;
   overflow: hidden;
 }
-.drawer-front::after { /* 面板上的微光 */
-  content: ""; position: absolute; top: -50%; left: 50%; width: 130%; height: 120%;
+.drawer-front::before { /* 金色内嵌描边 */
+  content: ""; position: absolute; inset: 12px; border-radius: 18px;
+  border: 1px solid rgba(224,186,124,0.28);
+  box-shadow: inset 0 0 24px rgba(0,0,0,0.4);
+  pointer-events: none;
+}
+.drawer-front::after { /* 面板顶部反光 */
+  content: ""; position: absolute; top: -55%; left: 50%; width: 140%; height: 130%;
   transform: translateX(-50%);
-  background: radial-gradient(ellipse at 50% 40%, rgba(124,108,255,0.14), transparent 55%);
+  background: radial-gradient(ellipse at 50% 40%, rgba(255,224,176,0.12), transparent 55%);
 }
+/* 缝隙:抽屉顶部透出的一线宇宙微光 */
+.seam {
+  position: absolute; top: 0; left: 12%; width: 76%; height: 3px;
+  background: linear-gradient(90deg, transparent, rgba(150,205,255,0.8), rgba(200,170,255,0.8), transparent);
+  filter: blur(1.5px); border-radius: 3px;
+  animation: seamGlow 4s var(--ease) infinite;
+}
+@keyframes seamGlow { 0%,100%{opacity:.35} 50%{opacity:1} }
+/* 黄铜把手 */
 .drawer-handle {
-  position: absolute; top: 26px; left: 50%; transform: translateX(-50%);
-  width: 92px; height: 9px; border-radius: 6px;
-  background: linear-gradient(180deg, #d9c9ff, #8b79d6);
-  box-shadow: 0 2px 10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.5);
+  position: absolute; top: 30px; left: 50%; transform: translateX(-50%);
+  width: 104px; height: 12px; border-radius: 8px;
+  background: linear-gradient(180deg, #f6e0ad 0%, #d9b26a 45%, #9c7532 100%);
+  box-shadow: 0 3px 12px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.6), inset 0 -2px 3px rgba(0,0,0,0.3);
 }
-.drawer-keyhole {
-  position: absolute; bottom: 34px; left: 50%; transform: translateX(-50%);
-  width: 16px; height: 16px; border-radius: 50%;
-  background: radial-gradient(circle, rgba(246,221,176,0.5), transparent 70%);
-  box-shadow: 0 0 14px rgba(246,221,176,0.4);
-  animation: keyGlow 3.5s var(--ease) infinite;
+/* 铭牌/锁眼:暗示里面藏着什么 */
+.drawer-plate {
+  position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+  width: 26px; height: 26px; border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #f6e0ad, #9c7532 70%);
+  box-shadow: 0 0 16px rgba(246,221,176,0.5), inset 0 -2px 4px rgba(0,0,0,0.4);
+  animation: keyGlow 3.6s var(--ease) infinite;
 }
-@keyframes keyGlow { 0%,100%{opacity:.4} 50%{opacity:1} }
+.drawer-plate::after {
+  content: ""; position: absolute; left: 50%; top: 52%; transform: translate(-50%,-50%);
+  width: 5px; height: 10px; border-radius: 3px; background: rgba(30,18,6,0.7);
+}
+@keyframes keyGlow { 0%,100%{box-shadow:0 0 10px rgba(246,221,176,0.35), inset 0 -2px 4px rgba(0,0,0,0.4)} 50%{box-shadow:0 0 22px rgba(246,221,176,0.7), inset 0 -2px 4px rgba(0,0,0,0.4)} }
 
 .portal-scene.opening .drawer { transform: translateY(128%) rotateX(30deg) scale(0.94); opacity: 0; }
 
@@ -268,29 +308,56 @@ body[data-view="map"]     .view-map {
 }
 
 /* =========================================================
-   投放页 · INS 卡片
+   投放页 · 网易云式的留白、诗意与高级感
    ========================================================= */
-.card-input { width: 100%; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.view-input { gap: 26px; }
+.input-head { text-align: center; display: flex; flex-direction: column; gap: 8px; }
+.view-input .lead {
+  font-size: clamp(27px, 7vw, 34px); letter-spacing: 3px; color: #fff;
+  text-shadow: 0 0 24px rgba(124,108,255,0.35);
+}
+.lead-sub {
+  font-family: var(--serif); font-style: normal;
+  font-size: 14px; letter-spacing: 1.5px; color: var(--paper-dim);
+}
+
+.card-input {
+  position: relative; width: 100%; padding: 24px;
+  border-radius: 26px; min-height: 190px;
+  display: flex; flex-direction: column; gap: 16px;
+  transition: border-color 0.4s var(--ease), box-shadow 0.4s var(--ease);
+}
+.card-input::before { /* 顶部一抹柔光 */
+  content: ""; position: absolute; inset: 0; border-radius: 26px; pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,0.06), transparent 30%);
+}
+.card-input:focus-within {
+  border-color: rgba(124,108,255,0.5);
+  box-shadow: inset 0 1px 0 var(--glass-hi), 0 0 0 1px rgba(124,108,255,0.25), 0 24px 60px rgba(124,108,255,0.22);
+}
 textarea {
+  position: relative; z-index: 1; flex: 1;
   width: 100%; background: transparent; border: none; outline: none; resize: none;
-  color: var(--paper); font-family: var(--sans); font-size: 17px; line-height: 1.8;
+  color: var(--paper); font-family: var(--sans); font-size: 18px; line-height: 1.9;
 }
 textarea::placeholder { color: var(--paper-dim); }
 
-.input-tools { display: flex; align-items: center; justify-content: space-between; }
+.input-tools { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; }
 .mic-btn {
   display: inline-flex; align-items: center; gap: 8px;
-  background: rgba(124,108,255,0.14); border: 1px solid rgba(124,108,255,0.3);
-  color: var(--paper); padding: 8px 16px; border-radius: 999px;
+  background: rgba(255,255,255,0.06); border: 1px solid var(--glass-brd);
+  color: var(--paper); padding: 9px 18px; border-radius: 999px;
   font-size: 14px; cursor: pointer; transition: all 0.3s var(--ease);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
 }
-.mic-btn:hover { background: rgba(124,108,255,0.24); }
+.mic-btn:hover { border-color: rgba(124,108,255,0.5); background: rgba(124,108,255,0.16); }
 .mic-btn.listening {
   background: rgba(255,110,199,0.2); border-color: var(--magenta);
   animation: micPulse 1.2s var(--ease) infinite;
 }
 @keyframes micPulse { 0%,100%{box-shadow:0 0 0 0 rgba(255,110,199,0.4)} 50%{box-shadow:0 0 0 8px rgba(255,110,199,0)} }
-.mic-btn.disabled { opacity: 0.4; cursor: not-allowed; }
+.mic-btn.disabled { opacity: 0.5; }
+.mic-ico { font-size: 15px; }
 .char-hint { color: var(--paper-dim); font-size: 12px; }
 
 .chips { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; width: 100%; }

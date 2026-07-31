@@ -93,12 +93,17 @@
   function makeStars() {
     const box = $("stars");
     if (box.childElementCount) return;
-    for (let i = 0; i < 22; i++) {
+    const tint = ["#ffffff", "#bcd8ff", "#e6d0ff", "#cfe9ff"];
+    for (let i = 0; i < 64; i++) {
       const s = document.createElement("i");
+      const size = (Math.random() * 2.4 + 0.8).toFixed(1);
       s.style.left = Math.random() * 100 + "%";
       s.style.top = Math.random() * 100 + "%";
+      s.style.width = size + "px";
+      s.style.height = size + "px";
+      s.style.background = tint[(Math.random() * tint.length) | 0];
       s.style.animationDelay = (Math.random() * 4).toFixed(2) + "s";
-      s.style.animationDuration = (3 + Math.random() * 3).toFixed(2) + "s";
+      s.style.animationDuration = (2.5 + Math.random() * 3.5).toFixed(2) + "s";
       box.appendChild(s);
     }
   }
@@ -136,14 +141,20 @@
   (function initVoice() {
     const micBtn = $("micBtn");
     const micLabel = $("micLabel");
+    const DEFAULT_LABEL = "说给它听";
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    // 临时提示:显示几秒后自动恢复
+    let hintTimer = null;
+    function flash(msg, ms) {
+      clearTimeout(hintTimer);
+      micLabel.textContent = msg;
+      hintTimer = setTimeout(() => { if (!listening) micLabel.textContent = DEFAULT_LABEL; }, ms || 3200);
+    }
 
     if (!SR) {
       micBtn.classList.add("disabled");
-      micBtn.addEventListener("click", () => {
-        micLabel.textContent = "这台设备不支持语音";
-        setTimeout(() => (micLabel.textContent = "说给它听"), 1800);
-      });
+      micBtn.addEventListener("click", () => flash("这台设备/浏览器不支持语音，建议用 Chrome"));
       return;
     }
 
@@ -153,10 +164,22 @@
     rec.continuous = false;
     let listening = false;
     let baseText = "";
+    let gotResult = false;
 
-    micBtn.addEventListener("click", () => {
+    micBtn.addEventListener("click", async () => {
       if (listening) { rec.stop(); return; }
       baseText = $("feelingText").value;
+      gotResult = false;
+      // 主动请求麦克风权限,好触发浏览器授权弹窗、并给出清晰反馈
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        try {
+          const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+          s.getTracks().forEach((t) => t.stop()); // 仅用于取得授权
+        } catch (err) {
+          flash("请允许麦克风权限：点地址栏的麦克风图标 → 允许 → 重试", 5000);
+          return;
+        }
+      }
       try { rec.start(); } catch (e) { /* 连点忽略 */ }
     });
 
@@ -165,13 +188,26 @@
       micBtn.classList.add("listening");
       micLabel.textContent = "在听…（再点停止）";
     };
-    rec.onerror = () => { micLabel.textContent = "没听清，再试试"; };
+    rec.onerror = (e) => {
+      const map = {
+        "not-allowed": "麦克风被拦截：点地址栏麦克风图标→允许→刷新",
+        "service-not-allowed": "麦克风被拦截：点地址栏麦克风图标→允许→刷新",
+        "no-speech": "没听到声音，再说一次试试",
+        "audio-capture": "没找到麦克风设备",
+        "network": "语音服务连不上（此功能需能访问外网/开代理）",
+        "aborted": DEFAULT_LABEL,
+      };
+      flash(map[e.error] || "语音出错了，稍后再试", 5000);
+    };
     rec.onend = () => {
       listening = false;
       micBtn.classList.remove("listening");
-      micLabel.textContent = "说给它听";
+      if (gotResult) micLabel.textContent = DEFAULT_LABEL;
+      // 无结果时保留已有的错误提示(由 onerror 设置)
+      else if (micLabel.textContent === "在听…（再点停止）") micLabel.textContent = DEFAULT_LABEL;
     };
     rec.onresult = (ev) => {
+      gotResult = true;
       let txt = "";
       for (let i = 0; i < ev.results.length; i++) txt += ev.results[i][0].transcript;
       const joiner = baseText && !/\s$/.test(baseText) ? baseText + " " : baseText;

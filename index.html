@@ -30,29 +30,38 @@
       <div class="portal-scene" id="portalScene" role="button" tabindex="0" aria-label="拉开抽屉，走进来">
         <!-- 抽屉打开后露出的心灵漩涡 -->
         <div class="portal">
-          <div class="vortex"></div>
-          <div class="vortex vortex2"></div>
-          <div class="vortex vortex3"></div>
+          <div class="galaxy">
+            <div class="arm arm1"></div>
+            <div class="arm arm2"></div>
+            <div class="arm arm3"></div>
+          </div>
           <div class="portal-core"></div>
           <div class="stars" id="stars"></div>
-          <h1 class="zala">咋啦？</h1>
+          <div class="title">
+            <h1 class="zala">咋啦</h1>
+            <p class="zala-en">What's&nbsp;wrong?</p>
+          </div>
         </div>
         <!-- 抽屉本体(盖在漩涡之上,拉开时滑落) -->
         <div class="drawer">
           <div class="drawer-front">
+            <span class="seam"></span>
             <span class="drawer-handle"></span>
-            <span class="drawer-keyhole"></span>
+            <span class="drawer-plate"></span>
           </div>
         </div>
       </div>
       <p class="hint" id="introHint">轻轻拉开</p>
     </section>
 
-    <!-- 投放情绪 · INS 玻璃卡片 -->
+    <!-- 投放情绪 · 卡片 -->
     <section class="view view-input" aria-label="说出此刻">
-      <p class="lead">把此刻放进来。</p>
+      <div class="input-head">
+        <p class="lead">把此刻，放进来</p>
+        <p class="lead-sub">说给它听，我接着。说完，你可以让它消失。</p>
+      </div>
       <div class="glass card-input">
-        <textarea id="feelingText" rows="4" placeholder="今天是咋啦……（想说啥就说啥，说完可以让它消失）" maxlength="600"></textarea>
+        <textarea id="feelingText" rows="4" placeholder="今天是咋啦……" maxlength="600"></textarea>
         <div class="input-tools">
           <button class="mic-btn" id="micBtn" type="button" aria-label="语音输入">
             <span class="mic-ico">🎙</span><span class="mic-label" id="micLabel">说给它听</span>
