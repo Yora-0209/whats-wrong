@@ -197,6 +197,29 @@ body[data-view="map"]     .view-map {
 }
 .map-sub, .map-sub { color: var(--paper-dim); font-size: 13px; }
 
+/* ============ 本周回响 ============ */
+.echo-week {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px 18px;
+  background: linear-gradient(160deg, rgba(234,189,119,0.06), rgba(255,255,255,0.02));
+  text-align: center;
+}
+.echo-week .ew-title {
+  font-size: 12px;
+  color: var(--amber);
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+.echo-week .ew-body {
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.9;
+  color: var(--paper);
+}
+.echo-week[hidden] { display: none; }
+
 /* ============ 情绪热力图 ============ */
 .heatmap-wrap {
   width: 100%;

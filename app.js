@@ -177,8 +177,38 @@
     $("mapSub").textContent = map.length
       ? `已经收进 ${map.length} 个瞬间。`
       : "这里只留你亲手收进来的。";
+    renderWeeklyEcho(map);
     renderHeatmap(map);
     renderMapList(map);
+  }
+
+  // 本周回响:只回看,不预测。攒够 3 条才出现,零伪规律。
+  function renderWeeklyEcho(map) {
+    const box = $("echoWeek");
+    const weekAgo = Date.now() - 7 * 24 * 3600 * 1000;
+    const week = map.filter((e) => e.at >= weekAgo);
+    if (week.length < 3) { box.hidden = true; return; }
+
+    // 最常去的地方
+    const placeCount = {};
+    week.forEach((e) => { if (e.place) placeCount[e.place] = (placeCount[e.place] || 0) + 1; });
+    let topPlace = "", topN = 0;
+    Object.entries(placeCount).forEach(([p, n]) => { if (n > topN) { topPlace = p; topN = n; } });
+
+    // 最沉的一次
+    let heavy = null;
+    week.forEach((e) => { if (!heavy || (Number(e.intensity) || 0) > (Number(heavy.intensity) || 0)) heavy = e; });
+
+    const lines = [`这一周，你来过 ${week.length} 次。`];
+    if (topN >= 2 && topPlace) lines.push(`有 ${topN} 次，都在「${topPlace}」。`);
+    const heavyWeather = heavy && (heavy.weather || heavy.emotion);
+    if (heavyWeather && (Number(heavy.intensity) || 0) >= 4) lines.push(`最沉的一次，是「${heavyWeather}」。`);
+    lines.push("我都记得。");
+
+    box.innerHTML =
+      '<div class="ew-title">本周回响</div>' +
+      '<div class="ew-body">' + lines.map(escapeHtml).join("<br/>") + "</div>";
+    box.hidden = false;
   }
 
   // 按天聚合:每天取最强的一次情绪(强度)与其天气
