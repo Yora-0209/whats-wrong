@@ -1,4 +1,5 @@
-/* 「咋啦」前端交互:开屏抽屉 → 投放 → 接住转化 → 收纳/焚毁 → 情绪地图
+/* 「咋啦」前端交互
+   开屏抽屉 → 心灵漩涡浮现 → 投放 → 接住转化 → 收纳/焚毁 → 情绪地图
    数据只存本地(localStorage),不上传。LLM 通过 /api/chat 转发调用。 */
 
 (function () {
@@ -8,23 +9,175 @@
   const setView = (v) => document.body.setAttribute("data-view", v);
 
   const MAP_KEY = "zala_map_v1";
+  const MUTE_KEY = "zala_muted";
   let selectedPlace = "";
 
-  /* ---------- 开屏:拉开抽屉 ---------- */
-  const cabinet = $("cabinet");
-  function openCabinet() {
-    if (cabinet.classList.contains("opening")) return;
-    cabinet.classList.add("opening");
-    $("introHint").style.opacity = "0";
-    setTimeout(() => {
-      setView("input");
-      $("feelingText").focus();
-    }, 900);
+  /* =======================================================
+     声音:用 WebAudio 现场合成柔和音效,无需任何音频文件
+     ======================================================= */
+  const Sound = (() => {
+    let ctx = null;
+    let muted = localStorage.getItem(MUTE_KEY) === "1";
+
+    function ensure() {
+      if (!ctx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) ctx = new AC();
+      }
+      if (ctx && ctx.state === "suspended") ctx.resume();
+      return ctx;
+    }
+
+    // 柔和的开启音:一记温暖和弦 + 极轻的气流声
+    function playOpen() {
+      if (muted) return;
+      const ac = ensure();
+      if (!ac) return;
+      const now = ac.currentTime;
+
+      // 和弦(C-E-G,正弦,慢起长尾)
+      const master = ac.createGain();
+      master.gain.value = 0.0001;
+      const lp = ac.createBiquadFilter();
+      lp.type = "lowpass"; lp.frequency.value = 1800;
+      master.connect(lp); lp.connect(ac.destination);
+      master.gain.setValueAtTime(0.0001, now);
+      master.gain.exponentialRampToValueAtTime(0.09, now + 0.5);
+      master.gain.exponentialRampToValueAtTime(0.0001, now + 3.2);
+
+      [523.25, 659.25, 783.99].forEach((f, i) => {
+        const o = ac.createOscillator();
+        o.type = "sine"; o.frequency.value = f;
+        const g = ac.createGain(); g.gain.value = i === 0 ? 1 : 0.7;
+        o.connect(g); g.connect(master);
+        o.start(now + i * 0.06); o.stop(now + 3.3);
+      });
+
+      // 一缕气流(带通噪声,一闪而过)
+      const dur = 0.9;
+      const buf = ac.createBuffer(1, ac.sampleRate * dur, ac.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let k = 0; k < data.length; k++) data[k] = (Math.random() * 2 - 1) * 0.5;
+      const noise = ac.createBufferSource(); noise.buffer = buf;
+      const bp = ac.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 700; bp.Q.value = 0.8;
+      const ng = ac.createGain(); ng.gain.value = 0.0001;
+      noise.connect(bp); bp.connect(ng); ng.connect(ac.destination);
+      ng.gain.setValueAtTime(0.0001, now);
+      ng.gain.exponentialRampToValueAtTime(0.05, now + 0.25);
+      ng.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+      bp.frequency.setValueAtTime(500, now);
+      bp.frequency.linearRampToValueAtTime(1400, now + dur);
+      noise.start(now); noise.stop(now + dur);
+    }
+
+    function setMuted(m) {
+      muted = m;
+      localStorage.setItem(MUTE_KEY, m ? "1" : "0");
+      document.body.classList.toggle("muted", m);
+    }
+    function toggle() { setMuted(!muted); if (!muted) ensure(); }
+    function init() { document.body.classList.toggle("muted", muted); }
+
+    return { playOpen, toggle, init };
+  })();
+
+  Sound.init();
+  $("soundToggle").addEventListener("click", Sound.toggle);
+
+  /* =======================================================
+     开屏:第一下拉开抽屉(漩涡+咋啦浮现),第二下走进来
+     ======================================================= */
+  const scene = $("portalScene");
+  let introStage = "closed";
+
+  function makeStars() {
+    const box = $("stars");
+    if (box.childElementCount) return;
+    for (let i = 0; i < 22; i++) {
+      const s = document.createElement("i");
+      s.style.left = Math.random() * 100 + "%";
+      s.style.top = Math.random() * 100 + "%";
+      s.style.animationDelay = (Math.random() * 4).toFixed(2) + "s";
+      s.style.animationDuration = (3 + Math.random() * 3).toFixed(2) + "s";
+      box.appendChild(s);
+    }
   }
-  cabinet.addEventListener("click", openCabinet);
-  cabinet.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openCabinet(); }
+
+  function openPortal() {
+    if (introStage !== "closed") return;
+    introStage = "open";
+    makeStars();
+    scene.classList.add("opening");
+    Sound.playOpen();
+    const hint = $("introHint");
+    hint.style.opacity = "0";
+    setTimeout(() => { hint.textContent = "轻触，走进来"; hint.style.opacity = ""; }, 2600);
+  }
+
+  function enterInput() {
+    setView("input");
+    setTimeout(() => $("feelingText").focus(), 300);
+  }
+
+  scene.addEventListener("click", () => {
+    if (introStage === "closed") openPortal();
+    else enterInput();
   });
+  scene.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      if (introStage === "closed") openPortal(); else enterInput();
+    }
+  });
+
+  /* =======================================================
+     语音输入(SpeechRecognition,支持则用,不支持则提示)
+     ======================================================= */
+  (function initVoice() {
+    const micBtn = $("micBtn");
+    const micLabel = $("micLabel");
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SR) {
+      micBtn.classList.add("disabled");
+      micBtn.addEventListener("click", () => {
+        micLabel.textContent = "这台设备不支持语音";
+        setTimeout(() => (micLabel.textContent = "说给它听"), 1800);
+      });
+      return;
+    }
+
+    const rec = new SR();
+    rec.lang = "zh-CN";
+    rec.interimResults = true;
+    rec.continuous = false;
+    let listening = false;
+    let baseText = "";
+
+    micBtn.addEventListener("click", () => {
+      if (listening) { rec.stop(); return; }
+      baseText = $("feelingText").value;
+      try { rec.start(); } catch (e) { /* 连点忽略 */ }
+    });
+
+    rec.onstart = () => {
+      listening = true;
+      micBtn.classList.add("listening");
+      micLabel.textContent = "在听…（再点停止）";
+    };
+    rec.onerror = () => { micLabel.textContent = "没听清，再试试"; };
+    rec.onend = () => {
+      listening = false;
+      micBtn.classList.remove("listening");
+      micLabel.textContent = "说给它听";
+    };
+    rec.onresult = (ev) => {
+      let txt = "";
+      for (let i = 0; i < ev.results.length; i++) txt += ev.results[i][0].transcript;
+      const joiner = baseText && !/\s$/.test(baseText) ? baseText + " " : baseText;
+      $("feelingText").value = (joiner + txt).slice(0, 600);
+    };
+  })();
 
   /* ---------- 地点标签 ---------- */
   $("placeChips").addEventListener("click", (e) => {
@@ -96,7 +249,6 @@
     removeCrisisHelp();
 
     const dr = d.drawers || {};
-    // 歌
     $("songTitle").textContent = dr.song ? `${dr.song.title} — ${dr.song.artist}` : "";
     $("songWhy").textContent = dr.song ? (dr.song.why || "") : "";
     if (dr.song && dr.song.title) {
@@ -106,12 +258,9 @@
     } else {
       $("songLink").style.display = "none";
     }
-    // 一件小事
     $("stepAction").textContent = dr.step ? dr.step.action : "";
     $("stepPermission").textContent = dr.step ? (dr.step.permission || "") : "";
-    // 一句话
     $("wordsText").textContent = dr.words ? dr.words.text : "";
-    // 宣泄
     $("releaseAction").textContent = dr.release ? dr.release.action : "";
 
     setView("result");
@@ -158,7 +307,9 @@
     selectedPlace = "";
     document.querySelectorAll("#placeChips .chip").forEach((c) => c.classList.remove("active"));
     document.body.classList.remove("crisis");
-    cabinet.classList.remove("opening");
+    scene.classList.remove("opening");
+    introStage = "closed";
+    $("introHint").textContent = "轻轻拉开";
     $("introHint").style.opacity = "";
     setView("intro");
   }
@@ -189,13 +340,11 @@
     const week = map.filter((e) => e.at >= weekAgo);
     if (week.length < 3) { box.hidden = true; return; }
 
-    // 最常去的地方
     const placeCount = {};
     week.forEach((e) => { if (e.place) placeCount[e.place] = (placeCount[e.place] || 0) + 1; });
     let topPlace = "", topN = 0;
     Object.entries(placeCount).forEach(([p, n]) => { if (n > topN) { topPlace = p; topN = n; } });
 
-    // 最沉的一次
     let heavy = null;
     week.forEach((e) => { if (!heavy || (Number(e.intensity) || 0) > (Number(heavy.intensity) || 0)) heavy = e; });
 
@@ -211,7 +360,6 @@
     box.hidden = false;
   }
 
-  // 按天聚合:每天取最强的一次情绪(强度)与其天气
   function renderHeatmap(map) {
     const box = $("heatmap");
     box.innerHTML = "";
@@ -227,7 +375,6 @@
 
     const WEEKS = 12;
     const today = new Date(); today.setHours(0, 0, 0, 0);
-    // 回溯到 WEEKS*7 天前,再对齐到那周的周一
     const start = new Date(today);
     start.setDate(start.getDate() - (WEEKS * 7 - 1));
     const backToMon = (start.getDay() + 6) % 7;
@@ -270,7 +417,6 @@
     const p = (n) => String(n).padStart(2, "0");
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
   }
-
   function fmtDate(ts) {
     const d = new Date(ts);
     const p = (n) => String(n).padStart(2, "0");
