@@ -107,9 +107,9 @@
       oc.width = W; oc.height = H;
       const o = oc.getContext("2d");
       o.fillStyle = "#000"; o.textAlign = "center"; o.textBaseline = "middle";
-      const fs = Math.min(W * 0.30, H * 0.34, 300);
+      const fs = Math.min(W * 0.26, H * 0.30, 260);
       o.font = `500 ${fs}px "Songti SC","STSong","SimSun",serif`;
-      o.fillText("咋啦", W / 2, H * 0.42);
+      o.fillText("咋啦", W / 2, H * 0.40);
       const data = o.getImageData(0, 0, W, H).data;
       const step = Math.max(4, Math.round(fs / 58));
       tp = [];

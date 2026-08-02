@@ -90,6 +90,7 @@ body.muted .sound-toggle .snd-off { display: inline; color: var(--paper-dim); }
   position: relative; z-index: 2;
   height: 100%; display: flex; align-items: center; justify-content: center;
   padding: 28px;
+  pointer-events: none;            /* 让开屏鼠标事件穿透到沙画画布 */
 }
 .view {
   position: absolute; width: min(560px, 92vw);
@@ -103,8 +104,12 @@ body[data-view="input"]   .view-input,
 body[data-view="loading"] .view-loading,
 body[data-view="result"]  .view-result,
 body[data-view="map"]     .view-map {
-  opacity: 1; visibility: visible; transform: translateY(0); pointer-events: auto;
+  opacity: 1; visibility: visible; transform: translateY(0);
 }
+/* 仅这些页面需要点击 DOM;开屏交给画布 */
+body[data-view="input"]  .view-input,
+body[data-view="result"] .view-result,
+body[data-view="map"]    .view-map { pointer-events: auto; }
 
 /* =========================================================
    开屏:沙画粒子 hero(米白纸 · 鼠标追随扰动 · 「咋啦」凝聚)
@@ -121,8 +126,8 @@ body[data-view="map"] .sand { display: none; }
 body[data-view="input"] .sand { opacity: 0.5; pointer-events: none; cursor: default; }
 
 .intro-cap {
-  position: fixed; left: 0; right: 0; bottom: 14%; z-index: 2;
-  display: flex; flex-direction: column; align-items: center; gap: 16px;
+  position: fixed; left: 0; right: 0; bottom: 22%; z-index: 2;
+  display: flex; flex-direction: column; align-items: center; gap: 18px;
   text-align: center; pointer-events: none;
   transition: opacity 0.8s var(--ease);
 }
@@ -130,14 +135,14 @@ body.walking .intro-cap { opacity: 0; }
 .zala-en {
   font-family: "Baskerville", "Didot", "Hoefler Text", "Times New Roman", Georgia, serif;
   font-style: italic; font-weight: 300;
-  font-size: clamp(13px, 3.2vw, 20px); letter-spacing: 6px;
+  font-size: clamp(16px, 3.6vw, 24px); letter-spacing: 6px;
   color: var(--sage);
   opacity: 0; animation: capFade 1.4s var(--ease) 1.8s forwards;
 }
 @keyframes capFade { to { opacity: 1; } }
 
 .hint {
-  color: var(--paper-dim); font-size: 14px; letter-spacing: 4px;
+  color: var(--paper-dim); font-size: 16px; letter-spacing: 5px;
   animation: floatHint 2.6s var(--ease) infinite;
 }
 @keyframes floatHint {
