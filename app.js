@@ -138,19 +138,29 @@
       }
     }
 
-    /* ---------- 走入场景 ---------- */
+    /* ---------- 走入场景(上帝俯视 · 背影由近及远) ---------- */
     const SEASON = {
       spring: { fall: "petal", fc: "rgba(232,170,190,0.85)", grass: "#8fae72", ground: "rgba(143,174,114,0.16)", n: 22 },
       summer: { fall: "pollen", fc: "rgba(207,155,75,0.85)", grass: "#7c9a6b", ground: "rgba(124,154,107,0.16)", n: 18 },
       autumn: { fall: "leaf", fc: "rgba(201,120,52,0.9)", grass: "#b0975a", ground: "rgba(176,140,80,0.18)", n: 24 },
       winter: { fall: "snow", fc: "rgba(255,255,255,0.92)", grass: "#c9ccc4", ground: "rgba(210,214,208,0.32)", n: 34 },
     };
-    let season, cfg, gY, hs, grass = [], fallers = [], foot = [], lastFoot = 0;
-    let hero = null, dest = null, waypoint = null, sceneA = 0, revealed = false, walkStart = 0, blinkT = 90;
+    let season, cfg, hs, grass = [], fallers = [], foot = [];
+    let walker = null, dest = null, sceneA = 0, revealed = false, walkStart = 0;
+    let horizonY = 0, vpX = 0, nearY = 0;
 
     function seasonNow() {
       const m = new Date().getMonth() + 1;
       return m >= 3 && m <= 5 ? "spring" : m >= 6 && m <= 8 ? "summer" : m >= 9 && m <= 11 ? "autumn" : "winter";
+    }
+    // 透视投影:t=0 近(大),t=1 远(消失点);lat 横向 -1..1
+    function proj(t, lat) {
+      t = clamp(t, 0, 1);
+      const e = Math.pow(t, 0.68);
+      const y = nearY - (nearY - horizonY) * e;
+      const scale = 1 - 0.9 * e;
+      const x = vpX + lat * (W * 0.42) * scale;
+      return { x, y, scale };
     }
     function newFaller(spread) {
       return {
@@ -162,16 +172,17 @@
     }
     function initScene() {
       season = seasonNow(); cfg = SEASON[season];
-      gY = H * 0.8; hs = clamp(Math.min(W, H) / 820, 0.72, 1.25);
+      hs = clamp(Math.min(W, H) / 820, 0.7, 1.3);
+      horizonY = H * 0.40; nearY = H * 1.02; vpX = W * 0.5;
       grass = [];
       if (season !== "winter") {
-        const gn = Math.round(W / 13);
-        for (let i = 0; i < gn; i++) grass.push({ x: Math.random() * W, h: (9 + Math.random() * 16) * hs, ph: Math.random() * 6 });
+        for (let i = 0; i < 120; i++) grass.push({ lat: (Math.random() * 2 - 1) * 1.4, t: Math.random(), ph: Math.random() * 6 });
+        grass.sort((a, b) => b.t - a.t);
       }
       fallers = []; for (let i = 0; i < cfg.n; i++) fallers.push(newFaller(true));
-      foot = []; lastFoot = 0; waypoint = null; revealed = false; sceneA = 0; blinkT = 90;
-      hero = { x: W * 0.12, facing: 1, phase: 0, hop: 0, hopV: 0, emote: false, blink: 0 };
-      dest = { type: ["tree_hollow", "lantern", "bench"][(Math.random() * 3) | 0], x: W * 0.82, glow: 0 };
+      foot = []; revealed = false; sceneA = 0;
+      walker = { t: 0.05, steer: 0, steerTarget: 0, phase: 0, glance: 0, footAcc: 0, side: 1 };
+      dest = { type: ["tree_hollow", "lantern", "bench"][(Math.random() * 3) | 0], glow: 0 };
     }
     function enterWalk() {
       if (mode === "walk") return;
@@ -185,140 +196,136 @@
     }
     function arrive() {
       if (revealed) return;
-      revealed = true; hero.emote = true;
-      setTimeout(() => { setView("input"); setTimeout(() => $("feelingText").focus(), 300); }, 1150);
+      revealed = true;
+      setTimeout(() => { setView("input"); setTimeout(() => $("feelingText").focus(), 300); }, 1200);
     }
 
-    function updateHero(now) {
-      const topY = gY - 50 * hs;
-      const overHero = mouse.x > 0 && Math.hypot(mouse.x - hero.x, mouse.y - topY) < 46 * hs;
-      let target;
-      if (revealed) { target = dest.x; hero.emote = true; }
-      else if (overHero) { target = hero.x; hero.emote = true; hero.facing = mouse.x < hero.x ? -1 : 1; }
+    function updateWalker(now) {
+      const wp = proj(walker.t, walker.steer);
+      const headY = wp.y - 40 * wp.scale * hs;
+      const overW = mouse.x > 0 && Math.hypot(mouse.x - wp.x, mouse.y - headY) < 40 * wp.scale * hs + 26;
+      if (revealed) { walker.glance = Math.min(1, walker.glance + 0.05); walker.phase *= 0.9; }
+      else if (overW) { walker.glance = Math.min(1, walker.glance + 0.08); walker.phase *= 0.9; } // 停下 + 回眸
       else {
-        hero.emote = false;
-        if (waypoint != null) target = waypoint;
-        else if (mouse.x > 0 && mouse.y > gY - 170) target = clamp(mouse.x, 30, W - 30);
-        else target = dest.x;
+        walker.glance = Math.max(0, walker.glance - 0.05);
+        if (mouse.x > 0 && mouse.y > horizonY) walker.steerTarget = clamp((mouse.x - vpX) / (W * 0.42), -1, 1);
+        else walker.steerTarget *= 0.95;
+        walker.steer += (walker.steerTarget - walker.steer) * 0.05;
+        walker.t += 0.0016 * (1 - 0.4 * walker.t);
+        walker.phase += 0.22;
+        walker.footAcc += 0.0016 * (1 - 0.4 * walker.t);
+        if (walker.footAcc > 0.024) { walker.footAcc = 0; walker.side *= -1; foot.push({ t: walker.t, lat: walker.steer + walker.side * 0.05, a: 1 }); if (foot.length > 70) foot.shift(); }
       }
-      const dx = target - hero.x;
-      const moving = !overHero && !revealed && Math.abs(dx) > 4;
-      if (moving) {
-        hero.facing = dx > 0 ? 1 : -1;
-        hero.x += hero.facing * 2.1;
-        hero.phase += 0.28;
-        if (Math.abs(hero.x - lastFoot) > 24 * hs) { foot.push({ x: hero.x, y: gY, a: 1 }); lastFoot = hero.x; if (foot.length > 44) foot.shift(); }
-      } else hero.phase *= 0.85;
-      // hop bounce
-      if (hero.hopV !== 0 || hero.hop > 0) { hero.hop += hero.hopV; hero.hopV -= 0.6; if (hero.hop <= 0) { hero.hop = 0; hero.hopV = 0; } }
-      // blink
-      if (--blinkT <= 0) { hero.blink = 7; blinkT = 100 + Math.random() * 200; }
-      if (hero.blink > 0) hero.blink--;
-      if (waypoint != null && Math.abs(hero.x - waypoint) < 6) waypoint = null;
-      // arrival
-      if (!revealed) {
-        const near = Math.abs(hero.x - dest.x) < 30 * hs;
-        const leading = mouse.x > 0 && mouse.y > gY - 170 && !overHero;
-        if ((near && !moving && waypoint == null && !leading) || (near && now - walkStart > 22000)) arrive();
-      }
+      if (!revealed && (walker.t > 0.9 || (now - walkStart > 26000 && walker.t > 0.6))) arrive();
     }
 
     function drawGround() {
-      const g = ctx.createLinearGradient(0, gY - 6, 0, H);
-      g.addColorStop(0, "transparent"); g.addColorStop(0.25, cfg.ground); g.addColorStop(1, cfg.ground);
-      ctx.fillStyle = g; ctx.fillRect(0, gY - 6, W, H - gY + 6);
+      const g = ctx.createLinearGradient(0, horizonY, 0, H);
+      g.addColorStop(0, "transparent"); g.addColorStop(0.16, cfg.ground); g.addColorStop(1, cfg.ground);
+      ctx.fillStyle = g; ctx.fillRect(0, horizonY, W, H - horizonY);
+      // 汇向消失点的柔光小径
+      const n0 = proj(0, -0.24), n1 = proj(0, 0.24), fp = proj(0.95, 0);
+      const lane = ctx.createLinearGradient(0, H, 0, horizonY);
+      lane.addColorStop(0, "rgba(255,252,242,0.5)"); lane.addColorStop(1, "rgba(255,252,242,0)");
+      ctx.fillStyle = lane; ctx.beginPath(); ctx.moveTo(n0.x, n0.y); ctx.lineTo(n1.x, n1.y); ctx.lineTo(fp.x, fp.y); ctx.closePath(); ctx.fill();
+      // 尽头的暖光(那束"走向"的光)
+      const hg = ctx.createRadialGradient(vpX, horizonY, 0, vpX, horizonY, H * 0.34);
+      hg.addColorStop(0, "rgba(240,201,120,0.16)"); hg.addColorStop(1, "transparent");
+      ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(vpX, horizonY, H * 0.34, 0, 7); ctx.fill();
     }
     function drawGrass(now) {
-      ctx.strokeStyle = cfg.grass; ctx.lineWidth = 1.6 * hs; ctx.lineCap = "round";
+      ctx.strokeStyle = cfg.grass; ctx.lineCap = "round";
       for (const b of grass) {
-        const sway = Math.sin(now * 0.001 + b.ph) * 3 * hs;
-        ctx.beginPath(); ctx.moveTo(b.x, gY);
-        ctx.quadraticCurveTo(b.x + sway * 0.5, gY - b.h * 0.6, b.x + sway, gY - b.h);
-        ctx.stroke();
+        const p = proj(b.t, b.lat), s = p.scale * hs;
+        if (s < 0.06) continue;
+        const sway = Math.sin(now * 0.001 + b.ph) * 3 * s;
+        ctx.lineWidth = 1.5 * s;
+        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.quadraticCurveTo(p.x + sway * 0.5, p.y - 9 * s, p.x + sway, p.y - 16 * s); ctx.stroke();
       }
     }
     function drawFallers() {
       for (const f of fallers) {
         f.x += f.vx + Math.sin((f.y + T * 0.02) * 0.02) * 0.4; f.y += f.vy; f.rot += f.vr;
-        if (f.y > H + 12) { Object.assign(f, newFaller(false)); }
+        if (f.y > H + 12) Object.assign(f, newFaller(false));
         ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(f.rot); ctx.fillStyle = cfg.fc;
         if (cfg.fall === "snow" || cfg.fall === "pollen") { ctx.beginPath(); ctx.arc(0, 0, f.sz, 0, 7); ctx.fill(); }
         else if (cfg.fall === "petal") { ctx.beginPath(); ctx.ellipse(0, 0, f.sz, f.sz * 0.5, 0, 0, 7); ctx.fill(); }
-        else { ctx.fillRect(-f.sz / 2, -f.sz / 2, f.sz, f.sz * 0.7); } // leaf
+        else ctx.fillRect(-f.sz / 2, -f.sz / 2, f.sz, f.sz * 0.7);
         ctx.restore();
       }
     }
     function drawFoot() {
       for (let i = foot.length - 1; i >= 0; i--) {
-        const p = foot[i]; p.a -= 0.006;
+        const p = foot[i]; p.a -= 0.004;
         if (p.a <= 0) { foot.splice(i, 1); continue; }
-        ctx.fillStyle = `rgba(95,110,80,${p.a * 0.4})`;
-        ctx.beginPath(); ctx.ellipse(p.x, p.y, 4 * hs, 2 * hs, 0, 0, 7); ctx.fill();
+        const q = proj(p.t, p.lat), s = q.scale * hs;
+        ctx.fillStyle = `rgba(90,105,78,${p.a * 0.4})`;
+        ctx.beginPath(); ctx.ellipse(q.x, q.y, 4.5 * s, 2.2 * s, 0, 0, 7); ctx.fill();
       }
     }
     function drawDest() {
-      const x = dest.x, s = hs, glow = dest.glow;
+      const s = hs * 0.7, x = vpX, gy = horizonY + 4, glow = dest.glow;
       if (glow > 0.02) {
-        const cy = dest.type === "tree_hollow" ? gY - 30 * s : dest.type === "lantern" ? gY - 62 * s : gY - 34 * s;
-        const rg = ctx.createRadialGradient(x, cy, 0, x, cy, 70 * s);
-        rg.addColorStop(0, `rgba(240,201,120,${0.5 * glow})`); rg.addColorStop(1, "transparent");
-        ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(x, cy, 70 * s, 0, 7); ctx.fill();
+        const rg = ctx.createRadialGradient(x, gy - 24 * s, 0, x, gy - 24 * s, 90 * s);
+        rg.addColorStop(0, `rgba(240,201,120,${0.55 * glow})`); rg.addColorStop(1, "transparent");
+        ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(x, gy - 24 * s, 90 * s, 0, 7); ctx.fill();
       }
       if (dest.type === "tree_hollow") {
-        ctx.strokeStyle = "#7a6446"; ctx.lineWidth = 11 * s; ctx.lineCap = "round";
-        ctx.beginPath(); ctx.moveTo(x, gY); ctx.lineTo(x, gY - 44 * s); ctx.stroke();
-        ctx.fillStyle = "#5f7f54"; ctx.beginPath(); ctx.arc(x, gY - 66 * s, 34 * s, 0, 7); ctx.fill();
-        ctx.fillStyle = "#4f6a45"; ctx.beginPath(); ctx.arc(x - 20 * s, gY - 52 * s, 20 * s, 0, 7); ctx.arc(x + 20 * s, gY - 54 * s, 22 * s, 0, 7); ctx.fill();
-        ctx.fillStyle = glow > 0.02 ? `rgba(240,201,120,${0.4 + 0.6 * glow})` : "rgba(42,32,18,0.85)";
-        ctx.beginPath(); ctx.ellipse(x, gY - 28 * s, 7 * s, 11 * s, 0, 0, 7); ctx.fill();
+        ctx.strokeStyle = "#7a6446"; ctx.lineWidth = 9 * s; ctx.lineCap = "round";
+        ctx.beginPath(); ctx.moveTo(x, gy); ctx.lineTo(x, gy - 34 * s); ctx.stroke();
+        ctx.fillStyle = "#5f7f54"; ctx.beginPath(); ctx.arc(x, gy - 50 * s, 26 * s, 0, 7); ctx.fill();
+        ctx.fillStyle = glow > 0.02 ? `rgba(240,201,120,${0.4 + 0.6 * glow})` : "rgba(42,32,18,0.8)";
+        ctx.beginPath(); ctx.ellipse(x, gy - 22 * s, 5 * s, 8 * s, 0, 0, 7); ctx.fill();
       } else if (dest.type === "lantern") {
-        ctx.strokeStyle = "#6b6152"; ctx.lineWidth = 4 * s; ctx.lineCap = "round";
-        ctx.beginPath(); ctx.moveTo(x, gY); ctx.lineTo(x, gY - 56 * s); ctx.lineTo(x + 12 * s, gY - 56 * s); ctx.stroke();
+        ctx.strokeStyle = "#6b6152"; ctx.lineWidth = 3.5 * s; ctx.lineCap = "round";
+        ctx.beginPath(); ctx.moveTo(x, gy); ctx.lineTo(x, gy - 46 * s); ctx.stroke();
         ctx.fillStyle = glow > 0.02 ? `rgba(240,201,120,${0.5 + 0.5 * glow})` : "rgba(90,84,70,0.9)";
-        ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x + 6 * s, gY - 66 * s, 16 * s, 18 * s, 3 * s) : ctx.rect(x + 6 * s, gY - 66 * s, 16 * s, 18 * s); ctx.fill();
-      } else { // bench
-        ctx.strokeStyle = "#7a6446"; ctx.lineWidth = 4 * s; ctx.lineCap = "round";
+        ctx.beginPath(); ctx.arc(x, gy - 52 * s, 9 * s, 0, 7); ctx.fill();
+      } else {
+        ctx.strokeStyle = "#7a6446"; ctx.lineWidth = 3.5 * s; ctx.lineCap = "round";
         ctx.beginPath();
-        ctx.moveTo(x - 22 * s, gY); ctx.lineTo(x - 22 * s, gY - 14 * s);
-        ctx.moveTo(x + 22 * s, gY); ctx.lineTo(x + 22 * s, gY - 14 * s);
-        ctx.moveTo(x - 28 * s, gY - 14 * s); ctx.lineTo(x + 28 * s, gY - 14 * s);
-        ctx.moveTo(x - 26 * s, gY - 28 * s); ctx.lineTo(x + 26 * s, gY - 28 * s);
+        ctx.moveTo(x - 20 * s, gy); ctx.lineTo(x - 20 * s, gy - 12 * s);
+        ctx.moveTo(x + 20 * s, gy); ctx.lineTo(x + 20 * s, gy - 12 * s);
+        ctx.moveTo(x - 26 * s, gy - 12 * s); ctx.lineTo(x + 26 * s, gy - 12 * s);
+        ctx.moveTo(x - 24 * s, gy - 24 * s); ctx.lineTo(x + 24 * s, gy - 24 * s);
         ctx.stroke();
       }
     }
-    function drawHero(now) {
-      const s = hs, gyp = gY - hero.hop;
-      const hip = gyp - 22 * s, sh = gyp - 38 * s, headY = gyp - 50 * s, hr = 9 * s;
-      const sw = Math.sin(hero.phase) * 7 * s, aw = Math.sin(hero.phase + Math.PI) * 5 * s;
-      ctx.save();
-      ctx.strokeStyle = "#5f7f54"; ctx.fillStyle = "#5f7f54"; ctx.lineWidth = 4.5 * s; ctx.lineCap = "round";
-      ctx.beginPath(); ctx.moveTo(hero.x, hip); ctx.lineTo(hero.x + sw, gyp); ctx.moveTo(hero.x, hip); ctx.lineTo(hero.x - sw, gyp); ctx.stroke(); // legs
-      ctx.beginPath(); ctx.moveTo(hero.x, hip); ctx.lineTo(hero.x, sh); ctx.stroke(); // torso
+    function drawWalker(now) {
+      const wp = proj(walker.t, walker.steer);
+      const s = Math.max(0.06, wp.scale * hs);
+      const cx = wp.x, footY = wp.y;
+      const bodyH = 44 * s, headR = 9 * s, bodyW = 22 * s;
+      // 影子
+      ctx.fillStyle = "rgba(70,85,60,0.16)";
+      ctx.beginPath(); ctx.ellipse(cx, footY, 15 * s, 5 * s, 0, 0, 7); ctx.fill();
+      // 双脚交替(俯视只露一点)
+      const step = Math.sin(walker.phase) * 5 * s;
+      ctx.fillStyle = "#4f6a45";
+      ctx.beginPath(); ctx.ellipse(cx - 5 * s, footY - 2 * s - Math.max(0, step), 4 * s, 2.6 * s, 0, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(cx + 5 * s, footY - 2 * s - Math.max(0, -step), 4 * s, 2.6 * s, 0, 0, 7); ctx.fill();
+      // 背影躯干(水滴形)
+      ctx.fillStyle = "#5f7f54";
       ctx.beginPath();
-      if (hero.emote) {
-        ctx.moveTo(hero.x, sh + 4 * s); ctx.lineTo(hero.x - 6 * s, sh + 16 * s);
-        const wv = Math.sin(now * 0.018) * 4 * s;
-        ctx.moveTo(hero.x, sh + 4 * s); ctx.lineTo(hero.x + 11 * s + wv, sh - 7 * s);
-      } else {
-        ctx.moveTo(hero.x, sh + 4 * s); ctx.lineTo(hero.x + aw, sh + 15 * s);
-        ctx.moveTo(hero.x, sh + 4 * s); ctx.lineTo(hero.x - aw, sh + 15 * s);
+      ctx.moveTo(cx - bodyW * 0.5, footY - 6 * s);
+      ctx.quadraticCurveTo(cx - bodyW * 0.62, footY - bodyH * 0.7, cx - headR * 0.8, footY - bodyH + headR);
+      ctx.quadraticCurveTo(cx, footY - bodyH - 2 * s, cx + headR * 0.8, footY - bodyH + headR);
+      ctx.quadraticCurveTo(cx + bodyW * 0.62, footY - bodyH * 0.7, cx + bodyW * 0.5, footY - 6 * s);
+      ctx.closePath(); ctx.fill();
+      // 后脑勺
+      const hy = footY - bodyH + headR * 0.4;
+      ctx.beginPath(); ctx.arc(cx, hy, headR, 0, 7); ctx.fill();
+      // 沙粒质感
+      ctx.fillStyle = "rgba(95,120,80,0.42)";
+      for (let k = 0; k < 12; k++) { const rx = (Math.random() - 0.5) * bodyW * 0.8, ry = -Math.random() * bodyH * 0.82; ctx.fillRect(cx + rx, footY - 6 * s + ry, 1.4 * s, 1.4 * s); }
+      // 回眸:脸从后脑侧探出
+      if (walker.glance > 0.25) {
+        const a = walker.glance;
+        ctx.fillStyle = `rgba(244,239,227,${0.9 * a})`;
+        ctx.beginPath(); ctx.arc(cx - 3 * s, hy + 2 * s, 1.5 * s, 0, 7); ctx.arc(cx + 3 * s, hy + 2 * s, 1.5 * s, 0, 7); ctx.fill();
+        ctx.strokeStyle = `rgba(244,239,227,${0.9 * a})`; ctx.lineWidth = 1.2 * s;
+        ctx.beginPath(); ctx.arc(cx, hy + 4 * s, 2.4 * s, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
       }
-      ctx.stroke();
-      ctx.beginPath(); ctx.arc(hero.x, headY, hr, 0, 7); ctx.fill(); // head
-      const ex = hero.facing * 3 * s;
-      if (hero.blink > 0) {
-        ctx.strokeStyle = "#f4efe3"; ctx.lineWidth = 1.4 * s;
-        ctx.beginPath(); ctx.moveTo(hero.x + ex - 4 * s, headY - 1 * s); ctx.lineTo(hero.x + ex - 1 * s, headY - 1 * s);
-        ctx.moveTo(hero.x + ex + 2 * s, headY - 1 * s); ctx.lineTo(hero.x + ex + 5 * s, headY - 1 * s); ctx.stroke();
-      } else {
-        ctx.fillStyle = "#f4efe3";
-        ctx.beginPath(); ctx.arc(hero.x + ex - 3 * s, headY - 1 * s, 1.5 * s, 0, 7); ctx.arc(hero.x + ex + 3 * s, headY - 1 * s, 1.5 * s, 0, 7); ctx.fill();
-      }
-      if (hero.emote) {
-        ctx.strokeStyle = "#f4efe3"; ctx.lineWidth = 1.4 * s;
-        ctx.beginPath(); ctx.arc(hero.x + ex, headY + 2 * s, 3 * s, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
-      }
-      ctx.restore();
     }
     function drawFirefly(now) {
       if (mouse.x < 0) return;
@@ -336,9 +343,8 @@
       sceneA += (1 - sceneA) * 0.03;
       if (revealed) dest.glow += (1 - dest.glow) * 0.05;
       ctx.save(); ctx.globalAlpha = sceneA;
-      drawGround(); drawGrass(now); drawFoot(); drawDest(); drawFallers();
+      drawGround(); drawGrass(now); drawDest(); drawFoot(); updateWalker(now); drawWalker(now); drawFallers();
       ctx.restore();
-      ctx.save(); ctx.globalAlpha = Math.min(1, sceneA * 1.6); updateHero(now); drawHero(now); ctx.restore();
       drawFirefly(now);
     }
 
@@ -356,7 +362,7 @@
       raf = requestAnimationFrame(tick);
     }
     function start() { if (running) return; resize(); buildTitle(); running = true; t0 = performance.now(); raf = requestAnimationFrame(tick); }
-    function reset() { document.body.classList.remove("walking"); mode = "title"; titleFade = 0; revealed = false; waypoint = null; resize(); buildTitle(); }
+    function reset() { document.body.classList.remove("walking"); mode = "title"; titleFade = 0; revealed = false; resize(); buildTitle(); }
 
     function onMove(e) {
       const pt = e.touches ? e.touches[0] : e, r = cv.getBoundingClientRect();
@@ -369,9 +375,9 @@
       const r = cv.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
       if (mode === "title") { enterWalk(); return; }
       if (revealed) return;
-      if (Math.abs(mx - dest.x) < 70 && my > gY - 150) { waypoint = dest.x; return; } // 点终点:走过去
-      if (Math.hypot(mx - hero.x, my - (gY - 50 * hs)) < 46 * hs) { hero.hopV = 5; hero.emote = true; return; } // 点小人:蹦一下
-      waypoint = clamp(mx, 30, W - 30); // 点地面:带路
+      const wp = proj(walker.t, walker.steer);
+      if (Math.hypot(mx - wp.x, my - (wp.y - 30 * wp.scale * hs)) < 44 * wp.scale * hs + 18) { walker.glance = 1; return; } // 点小人:回眸
+      if (my > horizonY) walker.steerTarget = clamp((mx - vpX) / (W * 0.42), -1, 1); // 点地面:改道
     });
     cv.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (mode === "title") enterWalk(); }

@@ -126,8 +126,8 @@ body[data-view="map"] .sand { display: none; }
 body[data-view="input"] .sand { opacity: 0.5; pointer-events: none; cursor: default; }
 
 .intro-cap {
-  position: fixed; left: 0; right: 0; bottom: 22%; z-index: 2;
-  display: flex; flex-direction: column; align-items: center; gap: 18px;
+  position: fixed; left: 0; right: 0; bottom: 12%; z-index: 2;
+  display: flex; flex-direction: column; align-items: center; gap: 20px;
   text-align: center; pointer-events: none;
   transition: opacity 0.8s var(--ease);
 }
@@ -135,14 +135,14 @@ body.walking .intro-cap { opacity: 0; }
 .zala-en {
   font-family: "Baskerville", "Didot", "Hoefler Text", "Times New Roman", Georgia, serif;
   font-style: italic; font-weight: 300;
-  font-size: clamp(16px, 3.6vw, 24px); letter-spacing: 6px;
+  font-size: clamp(19px, 4.2vw, 30px); letter-spacing: 7px;
   color: var(--sage);
   opacity: 0; animation: capFade 1.4s var(--ease) 1.8s forwards;
 }
 @keyframes capFade { to { opacity: 1; } }
 
 .hint {
-  color: var(--paper-dim); font-size: 16px; letter-spacing: 5px;
+  color: var(--paper-dim); font-size: 18px; letter-spacing: 6px;
   animation: floatHint 2.6s var(--ease) infinite;
 }
 @keyframes floatHint {
