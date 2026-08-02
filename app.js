@@ -88,35 +88,23 @@
      开屏:第一下拉开抽屉(漩涡+咋啦浮现),第二下走进来
      ======================================================= */
   const scene = $("portalScene");
+  const scene3d = $("scene3d");
   let introStage = "closed";
 
-  function makeStars() {
-    const box = $("stars");
-    if (box.childElementCount) return;
-    const tint = ["#ffffff", "#bcd8ff", "#e6d0ff", "#cfe9ff"];
-    for (let i = 0; i < 64; i++) {
-      const s = document.createElement("i");
-      const size = (Math.random() * 2.4 + 0.8).toFixed(1);
-      s.style.left = Math.random() * 100 + "%";
-      s.style.top = Math.random() * 100 + "%";
-      s.style.width = size + "px";
-      s.style.height = size + "px";
-      s.style.background = tint[(Math.random() * tint.length) | 0];
-      s.style.animationDelay = (Math.random() * 4).toFixed(2) + "s";
-      s.style.animationDuration = (2.5 + Math.random() * 3.5).toFixed(2) + "s";
-      box.appendChild(s);
-    }
-  }
+  // 预加载「打开」态插画,切换时不闪白
+  new Image().src = "./images/drawer-open.png";
 
   function openPortal() {
     if (introStage !== "closed") return;
     introStage = "open";
-    makeStars();
     scene.classList.add("opening");
+    document.body.classList.add("opened");
+    scene3d.style.removeProperty("--tx");
+    scene3d.style.removeProperty("--ty");
     Sound.playOpen();
     const hint = $("introHint");
     hint.style.opacity = "0";
-    setTimeout(() => { hint.textContent = "轻触，走进来"; hint.style.opacity = ""; }, 2600);
+    setTimeout(() => { hint.textContent = "轻触，走进来"; hint.style.opacity = ""; }, 2200);
   }
 
   function enterInput() {
@@ -133,6 +121,19 @@
       e.preventDefault();
       if (introStage === "closed") openPortal(); else enterInput();
     }
+  });
+  // 桌面端:鼠标移动带来轻微 3D 视差
+  scene.addEventListener("pointermove", (e) => {
+    if (introStage !== "closed") return;
+    const r = scene.getBoundingClientRect();
+    const px = (e.clientX - r.left) / r.width - 0.5;
+    const py = (e.clientY - r.top) / r.height - 0.5;
+    scene3d.style.setProperty("--tx", (px * 12).toFixed(2) + "deg");
+    scene3d.style.setProperty("--ty", (-py * 12).toFixed(2) + "deg");
+  });
+  scene.addEventListener("pointerleave", () => {
+    scene3d.style.removeProperty("--tx");
+    scene3d.style.removeProperty("--ty");
   });
 
   /* =======================================================
@@ -344,6 +345,7 @@
     document.querySelectorAll("#placeChips .chip").forEach((c) => c.classList.remove("active"));
     document.body.classList.remove("crisis");
     scene.classList.remove("opening");
+    document.body.classList.remove("opened");
     introStage = "closed";
     $("introHint").textContent = "轻轻拉开";
     $("introHint").style.opacity = "";

@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>咋啦</title>
   <meta name="description" content="一个接住情绪、再轻轻递给你一个出口的地方。" />
-  <meta name="theme-color" content="#0a0912" />
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a0912'/%3E%3Ccircle cx='32' cy='32' r='16' fill='none' stroke='%23c9a6ff' stroke-width='2.5'/%3E%3Ccircle cx='32' cy='32' r='3' fill='%23f4dcae'/%3E%3C/svg%3E" />
+  <meta name="theme-color" content="#0c1f17" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230c1f17'/%3E%3Cpath d='M32 20c7 0 12 5 12 12 0 6-5 12-12 12s-12-6-12-12c0-7 5-12 12-12z' fill='none' stroke='%2371d1a0' stroke-width='2.5'/%3E%3Ccircle cx='32' cy='32' r='3' fill='%23f4dcae'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body data-view="intro">
@@ -25,30 +25,16 @@
 
   <main class="stage">
 
-    <!-- 开屏:抽屉 → 魔法漩涡 → 咋啦浮现 -->
+    <!-- 开屏:插画风盒子,3D 拉开 -->
     <section class="view view-intro" aria-label="开屏">
-      <div class="portal-scene" id="portalScene" role="button" tabindex="0" aria-label="拉开抽屉，走进来">
-        <!-- 抽屉打开后露出的心灵漩涡 -->
-        <div class="portal">
-          <div class="galaxy">
-            <div class="arm arm1"></div>
-            <div class="arm arm2"></div>
-            <div class="arm arm3"></div>
-          </div>
-          <div class="portal-core"></div>
-          <div class="stars" id="stars"></div>
-          <div class="title">
-            <h1 class="zala">咋啦</h1>
-            <p class="zala-en">What's&nbsp;wrong?</p>
-          </div>
-        </div>
-        <!-- 抽屉本体(盖在漩涡之上,拉开时滑落) -->
-        <div class="drawer">
-          <div class="drawer-front">
-            <span class="seam"></span>
-            <span class="drawer-handle"></span>
-            <span class="drawer-plate"></span>
-          </div>
+      <div class="title" id="introTitle">
+        <h1 class="zala">咋啦</h1>
+        <p class="zala-en">What's&nbsp;wrong?</p>
+      </div>
+      <div class="portal-scene" id="portalScene" role="button" tabindex="0" aria-label="拉开这只盒子，走进来">
+        <div class="scene3d" id="scene3d">
+          <img class="box box-closed" src="./images/drawer-closed.png" alt="一只绿色的木质小盒子" draggable="false" />
+          <img class="box box-open" src="./images/drawer-open.png" alt="盒子打开，里面是一个温暖的小世界" draggable="false" />
         </div>
       </div>
       <p class="hint" id="introHint">轻轻拉开</p>
