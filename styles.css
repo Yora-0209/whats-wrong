@@ -109,18 +109,24 @@ body[data-view="map"]     .view-map {
 /* =========================================================
    开屏:沙画粒子 hero(米白纸 · 鼠标追随扰动 · 「咋啦」凝聚)
    ========================================================= */
-.view-intro { width: 100vw; height: 100%; }
+.view-intro { pointer-events: none; }
 .sand {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  display: block; cursor: pointer;
+  position: fixed; inset: 0; width: 100%; height: 100%;
+  display: block; z-index: 1; cursor: pointer;
+  transition: opacity 0.8s var(--ease);
 }
-body:not([data-view="intro"]) .sand { display: none; }
+body[data-view="loading"] .sand,
+body[data-view="result"] .sand,
+body[data-view="map"] .sand { display: none; }
+body[data-view="input"] .sand { opacity: 0.5; pointer-events: none; cursor: default; }
 
 .intro-cap {
-  position: absolute; left: 0; right: 0; bottom: 15%;
+  position: fixed; left: 0; right: 0; bottom: 14%; z-index: 2;
   display: flex; flex-direction: column; align-items: center; gap: 16px;
   text-align: center; pointer-events: none;
+  transition: opacity 0.8s var(--ease);
 }
+body.walking .intro-cap { opacity: 0; }
 .zala-en {
   font-family: "Baskerville", "Didot", "Hoefler Text", "Times New Roman", Georgia, serif;
   font-style: italic; font-weight: 300;

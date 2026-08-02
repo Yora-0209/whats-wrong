@@ -18,6 +18,9 @@
   </div>
   <div class="grain" aria-hidden="true"></div>
 
+  <!-- 沙画舞台:开屏「咋啦」凝聚 → 走进来时小人走入的场景(全屏,常驻) -->
+  <canvas id="sand" class="sand" role="button" tabindex="0" aria-label="轻触，走进来"></canvas>
+
   <!-- 声音开关 -->
   <button class="sound-toggle" id="soundToggle" aria-label="声音开关" title="声音">
     <span class="snd-on">♪</span><span class="snd-off">×</span>
@@ -25,9 +28,8 @@
 
   <main class="stage">
 
-    <!-- 开屏:沙画粒子 hero -->
+    <!-- 开屏文案(浮在沙画之上) -->
     <section class="view view-intro" aria-label="开屏">
-      <canvas id="sand" class="sand" role="button" tabindex="0" aria-label="走进来"></canvas>
       <div class="intro-cap">
         <p class="zala-en">What's&nbsp;wrong?</p>
         <p class="hint" id="introHint">轻触，走进来</p>
