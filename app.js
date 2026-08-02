@@ -117,23 +117,26 @@
       tp = [];
       for (let y = 0; y < H; y += step)
         for (let x = 0; x < W; x += step)
-          if (data[(y * W + x) * 4 + 3] > 128)
+          if (data[(y * W + x) * 4 + 3] > 128) {
+            const ang = Math.random() * 6.283, spd = useO ? 1.5 + Math.random() * 3.5 : 0;
             tp.push({
-              // 纸团碎开时:所有沙粒从纸团所在的一点迸出,再聚成「咋啦」
-              x: useO ? ox + (Math.random() - 0.5) * 70 : W / 2 + (Math.random() - 0.5) * W,
-              y: useO ? oy + (Math.random() - 0.5) * 70 : H / 2 + (Math.random() - 0.5) * H,
-              tx: x, ty: y, vx: 0, vy: 0,
+              // 「让它消失」时:沙从卡片处先向外迸散,再缓缓聚成「咋啦」
+              x: useO ? ox + (Math.random() - 0.5) * 40 : W / 2 + (Math.random() - 0.5) * W,
+              y: useO ? oy + (Math.random() - 0.5) * 40 : H / 2 + (Math.random() - 0.5) * H,
+              tx: x, ty: y,
+              vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd,
               s: Math.random() < 0.5 ? 1.4 : 2,
               c: Math.random() < 0.06 ? glowC : ink[(Math.random() * ink.length) | 0],
               ph: Math.random() * Math.PI * 2,
             });
+          }
     }
     function drawTitle(now) {
       const t = now - t0;
       for (const p of tp) {
         const jx = reduce ? 0 : Math.cos(p.ph + t * 0.0011) * 0.35;
         const jy = reduce ? 0 : Math.sin(p.ph + t * 0.0013) * 0.35;
-        let ax = (p.tx + jx - p.x) * 0.022, ay = (p.ty + jy - p.y) * 0.022;
+        let ax = (p.tx + jx - p.x) * 0.018, ay = (p.ty + jy - p.y) * 0.018;
         const dx = p.x - mouse.x, dy = p.y - mouse.y, d2 = dx * dx + dy * dy;
         if (d2 < REPEL * REPEL) { const d = Math.sqrt(d2) || 1, f = (1 - d / REPEL) * 4.2; ax += dx / d * f; ay += dy / d * f; }
         p.vx = (p.vx + ax) * 0.85; p.vy = (p.vy + ay) * 0.85;
@@ -596,48 +599,18 @@
     resetToHome();
   });
 
-  /* ---------- 「让它消失」:放大居中 → 抽帧揉成纸团 → 碎成沙聚回「咋啦」 ---------- */
-  const CRUMPLE = ["./images/crumple-1.jpg", "./images/crumple-2.jpg", "./images/crumple-3.jpg", "./images/crumple-4.jpg"];
-  CRUMPLE.forEach((src) => { const im = new Image(); im.src = src; }); // 预加载,避免抽帧闪白
-
+  /* ---------- 「让它消失」:接住卡就地化作沙,缓缓聚回首页「咋啦」 ---------- */
   $("burnBtn").addEventListener("click", () => {
-    if (document.body.classList.contains("crumpling")) return;
-    const card = $("echoCard"), fx = $("crumpleFx");
-    // 1) 浅浅放大并移到视野正中
-    const r = card.getBoundingClientRect();
-    const cx = window.innerWidth / 2 - (r.left + r.width / 2);
-    const cy = window.innerHeight / 2 - (r.top + r.height / 2);
-    card.style.setProperty("--cx", cx.toFixed(1) + "px");
-    card.style.setProperty("--cy", cy.toFixed(1) + "px");
-    document.body.classList.add("crumpling");
-    card.classList.add("lift");
-
-    // 2) 逐帧把纸揉紧(摊平 → 微皱 → 大皱 → 纸团)
-    const scales = [1, 0.84, 0.68, 0.5];
-    const FRAME = 170;
-    let i = 0, stepper = null;
+    if (document.body.classList.contains("dissolving")) return;
+    const card = $("echoCard"), r = card.getBoundingClientRect();
+    const ox = r.left + r.width / 2, oy = r.top + r.height / 2; // 卡片中心 = 沙的迸发点
+    document.body.classList.add("dissolving");
+    card.classList.add("dissolve");
     setTimeout(() => {
-      fx.style.backgroundImage = `url(${CRUMPLE[0]})`;
-      fx.style.transform = `translate(-50%, -50%) scale(${scales[0]})`;
-      fx.classList.add("on");
-      card.classList.add("fade");
-      stepper = setInterval(() => {
-        i++;
-        if (i >= CRUMPLE.length) { clearInterval(stepper); return; }
-        fx.style.backgroundImage = `url(${CRUMPLE[i]})`;
-        fx.style.transform = `translate(-50%, -50%) scale(${scales[i]})`;
-      }, FRAME);
+      card.classList.remove("dissolve");
+      document.body.classList.remove("dissolving");
+      resetToHome({ x: ox, y: oy });   // 沙从卡片处升起,缓缓聚成「咋啦」
     }, 520);
-
-    // 3) 纸团碎成沙,从视野正中迸出并聚回「咋啦」
-    setTimeout(() => {
-      if (stepper) clearInterval(stepper);
-      fx.classList.remove("on");
-      card.classList.remove("lift", "fade");
-      card.style.removeProperty("--cx"); card.style.removeProperty("--cy");
-      document.body.classList.remove("crumpling");
-      resetToHome({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-    }, 520 + FRAME * 3 + 340);
   });
 
   function resetToHome(origin) {
