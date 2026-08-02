@@ -146,7 +146,7 @@
       autumn: { fall: "leaf", fc: "rgba(201,120,52,0.9)", grass: "#b0975a", n: 24 },
       winter: { fall: "snow", fc: "rgba(255,255,255,0.92)", grass: "#c9ccc4", n: 34 },
     };
-    let season, cfg, hs, grass = [], fallers = [], foot = [], wparts = [], hatch = [], walker = null;
+    let season, cfg, hs, grass = [], fallers = [], trail = [], wparts = [], hatch = [], walker = null;
     let sceneA = 0, revealed = false, walkStart = 0, goalGlow = 0;
     let goalY = 0, vpX = 0, nearY = 0;
     const FIG = [];
@@ -207,9 +207,8 @@
       for (let i = 0; i < 140; i++) hatch.push({ lat: (Math.random() * 2 - 1) * 1.6, t: 0.03 + Math.random() * 0.95, len: 6 + Math.random() * 10, ang: -0.5 + Math.random() * 0.2 });
       hatch.sort((a, b) => b.t - a.t);
       fallers = []; for (let i = 0; i < cfg.n; i++) fallers.push(newFaller(true));
-      foot = []; revealed = false; sceneA = 0; goalGlow = 0;
-      walker = { t: 0.02, steer: 0, steerTarget: 0, phase: 0, glance: 0, footAcc: 0, side: 1 };
-      initWalkerParts();
+      trail = []; revealed = false; sceneA = 0; goalGlow = 0;
+      walker = { t: 0.02, steer: 0, steerTarget: 0, phase: 0, glance: 0 };
     }
     function enterWalk() {
       if (mode === "walk") return;
@@ -225,27 +224,25 @@
       setTimeout(() => { setView("input"); setTimeout(() => $("feelingText").focus(), 300); }, 1300);
     }
 
+    // 光之魂:一缕暖光飘向「咋啦」,沿途留下渐隐光尘
     function updateWalker(now) {
       const b = proj(walker.t, walker.steer);
-      const overW = mouse.x > 0 && Math.hypot(mouse.x - b.x, mouse.y - (b.y - 70 * b.scale * hs)) < 62 * b.scale * hs + 24;
+      const cy = b.y - 30 * b.scale * hs;
+      const over = mouse.x > 0 && Math.hypot(mouse.x - b.x, mouse.y - cy) < 60 * b.scale * hs + 30;
       if (revealed) { walker.glance = Math.min(1, walker.glance + 0.05); }
-      else if (overW) { walker.glance = Math.min(1, walker.glance + 0.08); } // 停下 + 回眸
+      else if (over) { walker.glance = Math.min(1, walker.glance + 0.08); } // 悬停:停下、变亮
       else {
-        walker.glance = Math.max(0, walker.glance - 0.05);
-        if (mouse.x > 0 && mouse.y > goalY - 40) walker.steerTarget = clamp((mouse.x - vpX) / (W * 0.34), -1, 1);
+        walker.glance = Math.max(0, walker.glance - 0.04);
+        if (mouse.x > 0 && mouse.y > goalY - 60) walker.steerTarget = clamp((mouse.x - vpX) / (W * 0.34), -1, 1);
         else walker.steerTarget *= 0.95;
         walker.steer += (walker.steerTarget - walker.steer) * 0.05;
-        walker.t += 0.0024 * (1 - 0.35 * walker.t);
-        walker.phase += 0.26;
-        walker.footAcc += 0.0024 * (1 - 0.35 * walker.t);
-        if (walker.footAcc > 0.022) {
-          walker.footAcc = 0; walker.side *= -1;
-          const pts = []; for (let k = 0; k < 12; k++) pts.push({ dx: (Math.random() - 0.5) * 2, dy: (Math.random() - 0.5) * 2 });
-          foot.push({ t: walker.t, lat: walker.steer + walker.side * 0.045, pts });
-          if (foot.length > 160) foot.shift();
-        }
+        walker.t += 0.0022 * (1 - 0.3 * walker.t);
+        const s = b.scale * hs;
+        trail.push({ x: b.x + (Math.random() - 0.5) * 4 * s, y: cy + (Math.random() - 0.5) * 4 * s, a: 1, r: (5 + Math.random() * 4) * s });
+        if (trail.length > 150) trail.shift();
       }
-      if (!revealed && (walker.t > 0.82 || (now - walkStart > 24000 && walker.t > 0.55))) arrive();
+      walker.phase += 0.05;
+      if (!revealed && (walker.t > 0.85 || (now - walkStart > 20000 && walker.t > 0.55))) arrive();
     }
 
     function drawGround(now) {
@@ -290,12 +287,13 @@
         ctx.restore();
       }
     }
-    function drawFoot() {
-      for (let i = 0; i < foot.length; i++) {
-        const p = foot[i], q = proj(p.t, p.lat), s = q.scale * hs;
-        ctx.fillStyle = "rgba(78,66,48,0.62)";
-        const d = Math.max(1.2, 1.7 * s);
-        for (const g of p.pts) ctx.fillRect(q.x + g.dx * 5.5 * s, q.y + g.dy * 2.6 * s, d, d);
+    function drawTrail() {
+      for (let i = trail.length - 1; i >= 0; i--) {
+        const p = trail[i]; p.a -= 0.006;
+        if (p.a <= 0) { trail.splice(i, 1); continue; }
+        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
+        g.addColorStop(0, `rgba(240,201,120,${0.45 * p.a})`); g.addColorStop(1, "transparent");
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill();
       }
     }
     function drawGoalGlow() {
@@ -304,41 +302,30 @@
       g.addColorStop(0, `rgba(240,201,120,${0.22 * goalGlow})`); g.addColorStop(1, "transparent");
       ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
     }
-    // 简笔画/铅笔线条小人(小头背影,由近及远)
+    // 光之魂:一颗会呼吸的暖光,飘向「咋啦」
     function drawWalker(now) {
       const b = proj(walker.t, walker.steer);
-      const s = Math.max(0.14, b.scale * hs);
-      const cx = b.x, footY = b.y;
-      const legLen = 20 * s, bodyLen = 24 * s, headR = 5 * s; // 小头
-      const bob = -Math.abs(Math.sin(walker.phase)) * 1.5 * s;
-      const hipY = footY - legLen + bob, shoulderY = hipY - bodyLen, headCY = shoulderY - headR - 1.5 * s;
-      const sw = Math.sin(walker.phase) * 8 * s;              // 腿摆
-      const aw = Math.sin(walker.phase + Math.PI) * 4.5 * s;  // 臂摆
-      // 影子
-      ctx.fillStyle = "rgba(70,85,60,0.14)";
-      ctx.beginPath(); ctx.ellipse(cx, footY, 9 * s, 2.6 * s, 0, 0, 7); ctx.fill();
-      ctx.lineCap = "round"; ctx.lineJoin = "round";
-      // 铅笔感:主线 + 一条更淡的偏移线
-      const pencil = (fn) => {
-        ctx.strokeStyle = "rgba(74,72,64,0.92)"; ctx.lineWidth = 2.2 * s; fn(0, 0);
-        ctx.strokeStyle = "rgba(74,72,64,0.3)"; ctx.lineWidth = 1.1 * s; fn(0.7 * s, -0.5 * s);
-      };
-      // 腿
-      pencil((dx, dy) => { ctx.beginPath(); ctx.moveTo(cx + dx, hipY + dy); ctx.lineTo(cx + sw + dx, footY + dy); ctx.moveTo(cx + dx, hipY + dy); ctx.lineTo(cx - sw + dx, footY + dy); ctx.stroke(); });
-      // 躯干
-      pencil((dx, dy) => { ctx.beginPath(); ctx.moveTo(cx + dx, hipY + dy); ctx.lineTo(cx + dx, shoulderY + dy); ctx.stroke(); });
-      // 手臂
-      pencil((dx, dy) => { ctx.beginPath(); ctx.moveTo(cx + dx, shoulderY + 3 * s + dy); ctx.lineTo(cx + aw + dx, shoulderY + 12 * s + dy); ctx.moveTo(cx + dx, shoulderY + 3 * s + dy); ctx.lineTo(cx - aw + dx, shoulderY + 12 * s + dy); ctx.stroke(); });
-      // 小头(背影:空心圆)
-      ctx.strokeStyle = "rgba(74,72,64,0.95)"; ctx.lineWidth = 2 * s;
-      ctx.beginPath(); ctx.arc(cx, headCY, headR, 0, 7); ctx.stroke();
-      // 回眸:转过头露出小脸
-      if (walker.glance > 0.3) {
-        const a = walker.glance;
-        ctx.fillStyle = `rgba(74,72,64,${0.95 * a})`;
-        ctx.beginPath(); ctx.arc(cx - 1.8 * s, headCY, 0.9 * s, 0, 7); ctx.arc(cx + 1.8 * s, headCY, 0.9 * s, 0, 7); ctx.fill();
-        ctx.strokeStyle = `rgba(74,72,64,${0.9 * a})`; ctx.lineWidth = 1 * s;
-        ctx.beginPath(); ctx.arc(cx, headCY + 1.6 * s, 1.6 * s, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+      const s = Math.max(0.16, b.scale * hs);
+      const cx = b.x, cy = b.y - 30 * s;
+      const pulse = 1 + Math.sin(walker.phase * 3) * 0.08;
+      const bright = 0.6 + 0.4 * walker.glance;
+      // 外层光晕
+      const R = 30 * s * pulse;
+      let g = ctx.createRadialGradient(cx, cy, 0, cx, cy, R);
+      g.addColorStop(0, `rgba(246,221,176,${0.5 * bright})`);
+      g.addColorStop(0.4, `rgba(207,155,75,${0.26 * bright})`);
+      g.addColorStop(1, "transparent");
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.fill();
+      // 明亮内核
+      const cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, 9 * s);
+      cg.addColorStop(0, `rgba(255,250,240,${0.95 * bright})`); cg.addColorStop(1, "rgba(246,221,176,0)");
+      ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(cx, cy, 9 * s, 0, 7); ctx.fill();
+      // 环绕的小光点
+      for (let k = 0; k < 3; k++) {
+        const ang = walker.phase * 2 + k * 2.094;
+        const sx = cx + Math.cos(ang) * 16 * s, sy = cy + Math.sin(ang) * 16 * s * 0.6;
+        ctx.fillStyle = `rgba(255,240,200,${0.7 * bright})`;
+        ctx.beginPath(); ctx.arc(sx, sy, 1.6 * s, 0, 7); ctx.fill();
       }
     }
     function drawFirefly(now) {
@@ -352,11 +339,11 @@
       sceneA += (1 - sceneA) * 0.04;
       if (revealed) goalGlow += (1 - goalGlow) * 0.04;
       ctx.save(); ctx.globalAlpha = sceneA;
-      drawGround(now); drawPath(); drawGrass(now); drawFoot();
+      drawGround(now); drawPath(); drawGrass(now);
       ctx.restore();
       drawGoalGlow();
-      drawTitle(now);                 // 「咋啦」始终在场,是小人走向的终点
-      updateWalker(now); drawWalker(now);
+      drawTitle(now);                 // 「咋啦」始终在场,是光要去的地方
+      updateWalker(now); drawTrail(); drawWalker(now);
       drawFallers();
       drawFirefly(now);
     }
