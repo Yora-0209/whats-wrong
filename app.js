@@ -119,6 +119,7 @@
         for (let x = 0; x < W; x += step)
           if (data[(y * W + x) * 4 + 3] > 128)
             tp.push({
+              // 纸团碎开时:所有沙粒从纸团所在的一点迸出,再聚成「咋啦」
               x: useO ? ox + (Math.random() - 0.5) * 70 : W / 2 + (Math.random() - 0.5) * W,
               y: useO ? oy + (Math.random() - 0.5) * 70 : H / 2 + (Math.random() - 0.5) * H,
               tx: x, ty: y, vx: 0, vy: 0,
@@ -597,12 +598,24 @@
 
   $("burnBtn").addEventListener("click", () => {
     if (document.body.classList.contains("crumpling")) return;
+    const card = $("echoCard");
+    // 1) 浅浅放大并移到视野正中
+    const r = card.getBoundingClientRect();
+    const cx = window.innerWidth / 2 - (r.left + r.width / 2);
+    const cy = window.innerHeight / 2 - (r.top + r.height / 2);
+    card.style.setProperty("--cx", cx.toFixed(1) + "px");
+    card.style.setProperty("--cy", cy.toFixed(1) + "px");
     document.body.classList.add("crumpling");
+    card.classList.add("lift");
+    // 2) 揉成纸团(抽帧)
+    setTimeout(() => card.classList.add("crumple"), 520);
+    // 3) 纸团碎成沙,从视野正中迸出并聚回「咋啦」
     setTimeout(() => {
+      card.classList.remove("lift", "crumple");
+      card.style.removeProperty("--cx"); card.style.removeProperty("--cy");
       document.body.classList.remove("crumpling");
-      // 从视野中央迸成沙,重新聚为「咋啦」
       resetToHome({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-    }, 1050);
+    }, 520 + 780);
   });
 
   function resetToHome(origin) {
@@ -613,7 +626,6 @@
     setView("intro");   // 先切回首页,让画布重新可见(否则 clientWidth=0 会导致重建失败)
     Stage.reset(origin);
   }
-
   /* ---------- 情绪地图 ---------- */
   $("toMapBtn").addEventListener("click", () => { renderMap(); setView("map"); });
   $("backHomeBtn").addEventListener("click", resetToHome);
