@@ -138,28 +138,29 @@
       }
     }
 
-    /* ---------- 走入场景(上帝俯视 · 背影由近及远) ---------- */
+    /* ---------- 走入场景:沙粒小人从近处走向「咋啦」(与首页重叠) ---------- */
     const SEASON = {
-      spring: { fall: "petal", fc: "rgba(232,170,190,0.85)", grass: "#8fae72", ground: "rgba(143,174,114,0.16)", n: 22 },
-      summer: { fall: "pollen", fc: "rgba(207,155,75,0.85)", grass: "#7c9a6b", ground: "rgba(124,154,107,0.16)", n: 18 },
-      autumn: { fall: "leaf", fc: "rgba(201,120,52,0.9)", grass: "#b0975a", ground: "rgba(176,140,80,0.18)", n: 24 },
-      winter: { fall: "snow", fc: "rgba(255,255,255,0.92)", grass: "#c9ccc4", ground: "rgba(210,214,208,0.32)", n: 34 },
+      spring: { fall: "petal", fc: "rgba(232,170,190,0.85)", grass: "#8fae72", n: 22 },
+      summer: { fall: "pollen", fc: "rgba(207,155,75,0.85)", grass: "#7c9a6b", n: 18 },
+      autumn: { fall: "leaf", fc: "rgba(201,120,52,0.9)", grass: "#b0975a", n: 24 },
+      winter: { fall: "snow", fc: "rgba(255,255,255,0.92)", grass: "#c9ccc4", n: 34 },
     };
-    let season, cfg, hs, grass = [], fallers = [], foot = [];
-    let walker = null, dest = null, sceneA = 0, revealed = false, walkStart = 0;
-    let horizonY = 0, vpX = 0, nearY = 0;
+    let season, cfg, hs, grass = [], fallers = [], foot = [], wparts = [], walker = null;
+    let sceneA = 0, revealed = false, walkStart = 0, goalGlow = 0;
+    let goalY = 0, vpX = 0, nearY = 0;
+    const FIG = [];
 
     function seasonNow() {
       const m = new Date().getMonth() + 1;
       return m >= 3 && m <= 5 ? "spring" : m >= 6 && m <= 8 ? "summer" : m >= 9 && m <= 11 ? "autumn" : "winter";
     }
-    // 透视投影:t=0 近(大),t=1 远(消失点);lat 横向 -1..1
+    // 透视:t=0 近(大),t=1 到「咋啦」(远、小);lat 横向 -1..1
     function proj(t, lat) {
       t = clamp(t, 0, 1);
-      const e = Math.pow(t, 0.68);
-      const y = nearY - (nearY - horizonY) * e;
-      const scale = 1 - 0.9 * e;
-      const x = vpX + lat * (W * 0.42) * scale;
+      const e = Math.pow(t, 0.7);
+      const y = nearY - (nearY - goalY) * e;
+      const scale = 1 - 0.74 * e;
+      const x = vpX + lat * (W * 0.34) * scale;
       return { x, y, scale };
     }
     function newFaller(spread) {
@@ -170,78 +171,93 @@
         sz: (cfg.fall === "snow" || cfg.fall === "pollen" ? 2 : 5) * (0.7 + Math.random() * 0.8) * hs,
       };
     }
+    // 采样"背影小人"的局部粒子:feet 在 oy=0,头顶 ~0.96
+    function buildFigure() {
+      FIG.length = 0; let n = 0;
+      while (FIG.length < 190 && n < 9000) {
+        n++;
+        const oy = Math.random() * 0.96, ox = (Math.random() - 0.5) * 0.5;
+        let hw;
+        if (oy < 0.64) hw = Math.max(0.05, 0.2 * (1 - Math.abs(oy - 0.32) / 0.52));
+        else if (oy < 0.7) hw = 0.05;
+        else { const dy = (oy - 0.83) / 0.14; const v = 1 - dy * dy; if (v <= 0) continue; hw = 0.14 * Math.sqrt(v); }
+        if (Math.abs(ox) <= hw) FIG.push({ ox, oy });
+      }
+    }
+    function initWalkerParts() {
+      wparts = FIG.map((o) => ({
+        x: vpX + (Math.random() - 0.5) * W, y: H * 0.5 + Math.random() * H * 0.6,
+        ox: o.ox, oy: o.oy,
+        c: Math.random() < 0.12 ? "rgba(207,155,75,0.9)" : (Math.random() < 0.5 ? "rgba(95,122,74,0.92)" : "rgba(74,68,58,0.85)"),
+      }));
+    }
     function initScene() {
       season = seasonNow(); cfg = SEASON[season];
       hs = clamp(Math.min(W, H) / 820, 0.7, 1.3);
-      horizonY = H * 0.40; nearY = H * 1.02; vpX = W * 0.5;
+      goalY = H * 0.52; nearY = H * 1.0; vpX = W * 0.5;
       grass = [];
       if (season !== "winter") {
-        for (let i = 0; i < 120; i++) grass.push({ lat: (Math.random() * 2 - 1) * 1.4, t: Math.random(), ph: Math.random() * 6 });
+        for (let i = 0; i < 70; i++) grass.push({ lat: (Math.random() * 2 - 1) * 1.5, t: 0.05 + Math.random() * 0.9, ph: Math.random() * 6 });
         grass.sort((a, b) => b.t - a.t);
       }
       fallers = []; for (let i = 0; i < cfg.n; i++) fallers.push(newFaller(true));
-      foot = []; revealed = false; sceneA = 0;
-      walker = { t: 0.05, steer: 0, steerTarget: 0, phase: 0, glance: 0, footAcc: 0, side: 1 };
-      dest = { type: ["tree_hollow", "lantern", "bench"][(Math.random() * 3) | 0], glow: 0 };
+      foot = []; revealed = false; sceneA = 0; goalGlow = 0;
+      walker = { t: 0.02, steer: 0, steerTarget: 0, phase: 0, glance: 0, footAcc: 0, side: 1 };
+      initWalkerParts();
     }
     function enterWalk() {
       if (mode === "walk") return;
       mode = "walk";
       document.body.classList.add("walking");
       Sound.playOpen();
-      titleFade = 1;
-      for (const p of tp) { p.vx += (Math.random() - 0.5) * 3; p.vy -= 2 + Math.random() * 3; }
       initScene();
       walkStart = performance.now();
     }
     function arrive() {
       if (revealed) return;
       revealed = true;
-      setTimeout(() => { setView("input"); setTimeout(() => $("feelingText").focus(), 300); }, 1200);
+      setTimeout(() => { setView("input"); setTimeout(() => $("feelingText").focus(), 300); }, 1300);
     }
 
     function updateWalker(now) {
-      const wp = proj(walker.t, walker.steer);
-      const headY = wp.y - 40 * wp.scale * hs;
-      const overW = mouse.x > 0 && Math.hypot(mouse.x - wp.x, mouse.y - headY) < 40 * wp.scale * hs + 26;
-      if (revealed) { walker.glance = Math.min(1, walker.glance + 0.05); walker.phase *= 0.9; }
-      else if (overW) { walker.glance = Math.min(1, walker.glance + 0.08); walker.phase *= 0.9; } // 停下 + 回眸
+      const b = proj(walker.t, walker.steer);
+      const overW = mouse.x > 0 && Math.hypot(mouse.x - b.x, mouse.y - (b.y - 70 * b.scale * hs)) < 62 * b.scale * hs + 24;
+      if (revealed) { walker.glance = Math.min(1, walker.glance + 0.05); }
+      else if (overW) { walker.glance = Math.min(1, walker.glance + 0.08); } // 停下 + 回眸
       else {
         walker.glance = Math.max(0, walker.glance - 0.05);
-        if (mouse.x > 0 && mouse.y > horizonY) walker.steerTarget = clamp((mouse.x - vpX) / (W * 0.42), -1, 1);
+        if (mouse.x > 0 && mouse.y > goalY - 40) walker.steerTarget = clamp((mouse.x - vpX) / (W * 0.34), -1, 1);
         else walker.steerTarget *= 0.95;
         walker.steer += (walker.steerTarget - walker.steer) * 0.05;
-        walker.t += 0.0016 * (1 - 0.4 * walker.t);
-        walker.phase += 0.22;
-        walker.footAcc += 0.0016 * (1 - 0.4 * walker.t);
-        if (walker.footAcc > 0.024) { walker.footAcc = 0; walker.side *= -1; foot.push({ t: walker.t, lat: walker.steer + walker.side * 0.05, a: 1 }); if (foot.length > 70) foot.shift(); }
+        walker.t += 0.0013 * (1 - 0.35 * walker.t);
+        walker.phase += 0.2;
+        walker.footAcc += 0.0013 * (1 - 0.35 * walker.t);
+        if (walker.footAcc > 0.022) {
+          walker.footAcc = 0; walker.side *= -1;
+          const pts = []; for (let k = 0; k < 7; k++) pts.push({ dx: (Math.random() - 0.5) * 2, dy: (Math.random() - 0.5) * 2 });
+          foot.push({ t: walker.t, lat: walker.steer + walker.side * 0.045, pts });
+          if (foot.length > 160) foot.shift();
+        }
       }
-      if (!revealed && (walker.t > 0.9 || (now - walkStart > 26000 && walker.t > 0.6))) arrive();
+      if (!revealed && (walker.t > 0.82 || (now - walkStart > 24000 && walker.t > 0.55))) arrive();
     }
 
-    function drawGround() {
-      const g = ctx.createLinearGradient(0, horizonY, 0, H);
-      g.addColorStop(0, "transparent"); g.addColorStop(0.16, cfg.ground); g.addColorStop(1, cfg.ground);
-      ctx.fillStyle = g; ctx.fillRect(0, horizonY, W, H - horizonY);
-      // 汇向消失点的柔光小径
-      const n0 = proj(0, -0.24), n1 = proj(0, 0.24), fp = proj(0.95, 0);
-      const lane = ctx.createLinearGradient(0, H, 0, horizonY);
-      lane.addColorStop(0, "rgba(255,252,242,0.5)"); lane.addColorStop(1, "rgba(255,252,242,0)");
+    function drawPath() {
+      const n0 = proj(0, -0.2), n1 = proj(0, 0.2), fp = proj(0.9, 0);
+      const lane = ctx.createLinearGradient(0, nearY, 0, goalY);
+      lane.addColorStop(0, "rgba(255,252,242,0.45)"); lane.addColorStop(1, "rgba(255,252,242,0)");
       ctx.fillStyle = lane; ctx.beginPath(); ctx.moveTo(n0.x, n0.y); ctx.lineTo(n1.x, n1.y); ctx.lineTo(fp.x, fp.y); ctx.closePath(); ctx.fill();
-      // 尽头的暖光(那束"走向"的光)
-      const hg = ctx.createRadialGradient(vpX, horizonY, 0, vpX, horizonY, H * 0.34);
-      hg.addColorStop(0, "rgba(240,201,120,0.16)"); hg.addColorStop(1, "transparent");
-      ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(vpX, horizonY, H * 0.34, 0, 7); ctx.fill();
     }
     function drawGrass(now) {
-      ctx.strokeStyle = cfg.grass; ctx.lineCap = "round";
+      ctx.strokeStyle = cfg.grass; ctx.lineCap = "round"; ctx.globalAlpha = 0.5;
       for (const b of grass) {
         const p = proj(b.t, b.lat), s = p.scale * hs;
-        if (s < 0.06) continue;
+        if (s < 0.05) continue;
         const sway = Math.sin(now * 0.001 + b.ph) * 3 * s;
-        ctx.lineWidth = 1.5 * s;
-        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.quadraticCurveTo(p.x + sway * 0.5, p.y - 9 * s, p.x + sway, p.y - 16 * s); ctx.stroke();
+        ctx.lineWidth = 1.4 * s;
+        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.quadraticCurveTo(p.x + sway * 0.5, p.y - 8 * s, p.x + sway, p.y - 14 * s); ctx.stroke();
       }
+      ctx.globalAlpha = 1;
     }
     function drawFallers() {
       for (const f of fallers) {
@@ -255,76 +271,40 @@
       }
     }
     function drawFoot() {
-      for (let i = foot.length - 1; i >= 0; i--) {
-        const p = foot[i]; p.a -= 0.004;
-        if (p.a <= 0) { foot.splice(i, 1); continue; }
-        const q = proj(p.t, p.lat), s = q.scale * hs;
-        ctx.fillStyle = `rgba(90,105,78,${p.a * 0.4})`;
-        ctx.beginPath(); ctx.ellipse(q.x, q.y, 4.5 * s, 2.2 * s, 0, 0, 7); ctx.fill();
+      // 脚印保留:每个脚印是一小簇沙粒,长驻不消
+      for (let i = 0; i < foot.length; i++) {
+        const p = foot[i], q = proj(p.t, p.lat), s = q.scale * hs;
+        ctx.fillStyle = "rgba(120,100,70,0.5)";
+        for (const g of p.pts) ctx.fillRect(q.x + g.dx * 5 * s, q.y + g.dy * 2.4 * s, Math.max(1, 1.4 * s), Math.max(1, 1.4 * s));
       }
     }
-    function drawDest() {
-      const s = hs * 0.7, x = vpX, gy = horizonY + 4, glow = dest.glow;
-      if (glow > 0.02) {
-        const rg = ctx.createRadialGradient(x, gy - 24 * s, 0, x, gy - 24 * s, 90 * s);
-        rg.addColorStop(0, `rgba(240,201,120,${0.55 * glow})`); rg.addColorStop(1, "transparent");
-        ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(x, gy - 24 * s, 90 * s, 0, 7); ctx.fill();
-      }
-      if (dest.type === "tree_hollow") {
-        ctx.strokeStyle = "#7a6446"; ctx.lineWidth = 9 * s; ctx.lineCap = "round";
-        ctx.beginPath(); ctx.moveTo(x, gy); ctx.lineTo(x, gy - 34 * s); ctx.stroke();
-        ctx.fillStyle = "#5f7f54"; ctx.beginPath(); ctx.arc(x, gy - 50 * s, 26 * s, 0, 7); ctx.fill();
-        ctx.fillStyle = glow > 0.02 ? `rgba(240,201,120,${0.4 + 0.6 * glow})` : "rgba(42,32,18,0.8)";
-        ctx.beginPath(); ctx.ellipse(x, gy - 22 * s, 5 * s, 8 * s, 0, 0, 7); ctx.fill();
-      } else if (dest.type === "lantern") {
-        ctx.strokeStyle = "#6b6152"; ctx.lineWidth = 3.5 * s; ctx.lineCap = "round";
-        ctx.beginPath(); ctx.moveTo(x, gy); ctx.lineTo(x, gy - 46 * s); ctx.stroke();
-        ctx.fillStyle = glow > 0.02 ? `rgba(240,201,120,${0.5 + 0.5 * glow})` : "rgba(90,84,70,0.9)";
-        ctx.beginPath(); ctx.arc(x, gy - 52 * s, 9 * s, 0, 7); ctx.fill();
-      } else {
-        ctx.strokeStyle = "#7a6446"; ctx.lineWidth = 3.5 * s; ctx.lineCap = "round";
-        ctx.beginPath();
-        ctx.moveTo(x - 20 * s, gy); ctx.lineTo(x - 20 * s, gy - 12 * s);
-        ctx.moveTo(x + 20 * s, gy); ctx.lineTo(x + 20 * s, gy - 12 * s);
-        ctx.moveTo(x - 26 * s, gy - 12 * s); ctx.lineTo(x + 26 * s, gy - 12 * s);
-        ctx.moveTo(x - 24 * s, gy - 24 * s); ctx.lineTo(x + 24 * s, gy - 24 * s);
-        ctx.stroke();
-      }
+    function drawGoalGlow() {
+      if (goalGlow < 0.02) return;
+      const g = ctx.createRadialGradient(vpX, goalY * 0.82, 0, vpX, goalY * 0.82, W * 0.3);
+      g.addColorStop(0, `rgba(240,201,120,${0.22 * goalGlow})`); g.addColorStop(1, "transparent");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
     }
     function drawWalker(now) {
-      const wp = proj(walker.t, walker.steer);
-      const s = Math.max(0.06, wp.scale * hs);
-      const cx = wp.x, footY = wp.y;
-      const bodyH = 44 * s, headR = 9 * s, bodyW = 22 * s;
-      // 影子
-      ctx.fillStyle = "rgba(70,85,60,0.16)";
-      ctx.beginPath(); ctx.ellipse(cx, footY, 15 * s, 5 * s, 0, 0, 7); ctx.fill();
-      // 双脚交替(俯视只露一点)
-      const step = Math.sin(walker.phase) * 5 * s;
-      ctx.fillStyle = "#4f6a45";
-      ctx.beginPath(); ctx.ellipse(cx - 5 * s, footY - 2 * s - Math.max(0, step), 4 * s, 2.6 * s, 0, 0, 7); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(cx + 5 * s, footY - 2 * s - Math.max(0, -step), 4 * s, 2.6 * s, 0, 0, 7); ctx.fill();
-      // 背影躯干(水滴形)
-      ctx.fillStyle = "#5f7f54";
-      ctx.beginPath();
-      ctx.moveTo(cx - bodyW * 0.5, footY - 6 * s);
-      ctx.quadraticCurveTo(cx - bodyW * 0.62, footY - bodyH * 0.7, cx - headR * 0.8, footY - bodyH + headR);
-      ctx.quadraticCurveTo(cx, footY - bodyH - 2 * s, cx + headR * 0.8, footY - bodyH + headR);
-      ctx.quadraticCurveTo(cx + bodyW * 0.62, footY - bodyH * 0.7, cx + bodyW * 0.5, footY - 6 * s);
-      ctx.closePath(); ctx.fill();
-      // 后脑勺
-      const hy = footY - bodyH + headR * 0.4;
-      ctx.beginPath(); ctx.arc(cx, hy, headR, 0, 7); ctx.fill();
-      // 沙粒质感
-      ctx.fillStyle = "rgba(95,120,80,0.42)";
-      for (let k = 0; k < 12; k++) { const rx = (Math.random() - 0.5) * bodyW * 0.8, ry = -Math.random() * bodyH * 0.82; ctx.fillRect(cx + rx, footY - 6 * s + ry, 1.4 * s, 1.4 * s); }
-      // 回眸:脸从后脑侧探出
+      const b = proj(walker.t, walker.steer);
+      const size = 150 * b.scale * hs;
+      const bob = Math.sin(walker.phase) * 2 * b.scale * hs;
+      const dot = Math.max(1, 1.7 * b.scale * hs);
+      ctx.fillStyle = "rgba(70,85,60,0.14)";
+      ctx.beginPath(); ctx.ellipse(b.x, b.y, size * 0.22, size * 0.06, 0, 0, 7); ctx.fill();
+      for (const p of wparts) {
+        const leg = p.oy < 0.34 ? Math.sin(walker.phase + (p.ox > 0 ? 0 : Math.PI)) * 3 * b.scale * hs : 0;
+        const tx = b.x + p.ox * size;
+        const ty = b.y - p.oy * size + bob + leg;
+        p.x += (tx - p.x) * 0.2 + (Math.random() - 0.5) * 0.4;
+        p.y += (ty - p.y) * 0.2 + (Math.random() - 0.5) * 0.4;
+        ctx.fillStyle = p.c; ctx.fillRect(p.x, p.y, dot, dot);
+      }
       if (walker.glance > 0.25) {
-        const a = walker.glance;
+        const a = walker.glance, hy = b.y - size * 0.84, s = Math.max(0.6, b.scale * hs);
         ctx.fillStyle = `rgba(244,239,227,${0.9 * a})`;
-        ctx.beginPath(); ctx.arc(cx - 3 * s, hy + 2 * s, 1.5 * s, 0, 7); ctx.arc(cx + 3 * s, hy + 2 * s, 1.5 * s, 0, 7); ctx.fill();
-        ctx.strokeStyle = `rgba(244,239,227,${0.9 * a})`; ctx.lineWidth = 1.2 * s;
-        ctx.beginPath(); ctx.arc(cx, hy + 4 * s, 2.4 * s, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+        ctx.beginPath(); ctx.arc(b.x - 3 * s, hy, 1.6 * s, 0, 7); ctx.arc(b.x + 3 * s, hy, 1.6 * s, 0, 7); ctx.fill();
+        ctx.strokeStyle = `rgba(244,239,227,${0.9 * a})`; ctx.lineWidth = 1.3 * s;
+        ctx.beginPath(); ctx.arc(b.x, hy + 2.5 * s, 2.6 * s, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
       }
     }
     function drawFirefly(now) {
@@ -335,16 +315,15 @@
       ctx.fillStyle = g; ctx.beginPath(); ctx.arc(mouse.x, mouse.y, r, 0, 7); ctx.fill();
     }
     function drawWalk(now) {
-      if (titleFade > 0) {
-        titleFade -= 0.02; ctx.save(); ctx.globalAlpha = Math.max(0, titleFade);
-        for (const p of tp) { p.vy += 0.05; p.x += p.vx; p.y += p.vy; ctx.fillStyle = p.c; ctx.fillRect(p.x, p.y, p.s, p.s); }
-        ctx.restore();
-      }
-      sceneA += (1 - sceneA) * 0.03;
-      if (revealed) dest.glow += (1 - dest.glow) * 0.05;
+      sceneA += (1 - sceneA) * 0.04;
+      if (revealed) goalGlow += (1 - goalGlow) * 0.04;
       ctx.save(); ctx.globalAlpha = sceneA;
-      drawGround(); drawGrass(now); drawDest(); drawFoot(); updateWalker(now); drawWalker(now); drawFallers();
+      drawPath(); drawGrass(now); drawFoot();
       ctx.restore();
+      drawGoalGlow();
+      drawTitle(now);                 // 「咋啦」始终在场,是小人走向的终点
+      updateWalker(now); drawWalker(now);
+      drawFallers();
       drawFirefly(now);
     }
 
@@ -361,8 +340,8 @@
       if (mode === "title") drawTitle(now); else drawWalk(now);
       raf = requestAnimationFrame(tick);
     }
-    function start() { if (running) return; resize(); buildTitle(); running = true; t0 = performance.now(); raf = requestAnimationFrame(tick); }
-    function reset() { document.body.classList.remove("walking"); mode = "title"; titleFade = 0; revealed = false; resize(); buildTitle(); }
+    function start() { if (running) return; resize(); buildTitle(); buildFigure(); running = true; t0 = performance.now(); raf = requestAnimationFrame(tick); }
+    function reset() { document.body.classList.remove("walking"); mode = "title"; revealed = false; resize(); buildTitle(); }
 
     function onMove(e) {
       const pt = e.touches ? e.touches[0] : e, r = cv.getBoundingClientRect();
@@ -376,8 +355,8 @@
       if (mode === "title") { enterWalk(); return; }
       if (revealed) return;
       const wp = proj(walker.t, walker.steer);
-      if (Math.hypot(mx - wp.x, my - (wp.y - 30 * wp.scale * hs)) < 44 * wp.scale * hs + 18) { walker.glance = 1; return; } // 点小人:回眸
-      if (my > horizonY) walker.steerTarget = clamp((mx - vpX) / (W * 0.42), -1, 1); // 点地面:改道
+      if (Math.hypot(mx - wp.x, my - (wp.y - 70 * wp.scale * hs)) < 62 * wp.scale * hs + 20) { walker.glance = 1; return; } // 点小人:回眸
+      if (my > goalY - 40) walker.steerTarget = clamp((mx - vpX) / (W * 0.34), -1, 1); // 点地面:改道
     });
     cv.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (mode === "title") enterWalk(); }
