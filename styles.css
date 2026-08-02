@@ -85,6 +85,22 @@ body {
 body.muted .sound-toggle .snd-on { display: none; }
 body.muted .sound-toggle .snd-off { display: inline; color: var(--paper-dim); }
 
+/* ---------- 返回键(粒子点线箭头) ---------- */
+.back-btn {
+  position: fixed; top: 18px; left: 18px; z-index: 20;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--glass-bg); border: 1px solid var(--glass-brd);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  color: var(--paper); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; visibility: hidden;
+  transition: transform 0.25s var(--ease), opacity 0.4s var(--ease), visibility 0.4s var(--ease);
+}
+.back-btn:hover { transform: scale(1.08); }
+body[data-view="input"] .back-btn,
+body[data-view="result"] .back-btn,
+body[data-view="map"] .back-btn { opacity: 1; visibility: visible; }
+
 /* ---------- 舞台与视图切换 ---------- */
 .stage {
   position: relative; z-index: 2;
@@ -320,6 +336,27 @@ body.burning .view-result { animation: burnAway 0.9s var(--ease) forwards; }
 .heat-legend { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--paper-dim); }
 .heat-legend i { width: 11px; height: 11px; border-radius: 3px; background: var(--violet); }
 .heat-legend .l1{opacity:.3} .heat-legend .l2{opacity:.48} .heat-legend .l3{opacity:.66} .heat-legend .l4{opacity:.84} .heat-legend .l5{opacity:1}
+
+/* ---------- 情绪日历 ---------- */
+.cal-wrap { width: 100%; padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.cal-title { font-family: var(--serif); color: var(--paper); font-size: 15px; letter-spacing: 2px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; width: 100%; max-width: 320px; }
+.cal-h { text-align: center; font-size: 11px; color: var(--paper-dim); padding-bottom: 2px; }
+.cal-b { aspect-ratio: 1; }
+.cal-d {
+  aspect-ratio: 1; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: var(--paper-dim);
+  background: rgba(124,154,107,0.08); border: 1px solid rgba(124,154,107,0.12);
+  transition: transform 0.2s var(--ease);
+}
+.cal-d[data-i] { color: #f4efe3; }
+.cal-d[data-i]:hover { transform: scale(1.08); }
+.cal-d[data-i="1"] { background: rgba(124,154,107,0.32); color: #3c362d; }
+.cal-d[data-i="2"] { background: rgba(124,154,107,0.5); color: #3c362d; }
+.cal-d[data-i="3"] { background: rgba(95,127,84,0.72); }
+.cal-d[data-i="4"] { background: rgba(95,127,84,0.9); }
+.cal-d[data-i="5"] { background: linear-gradient(160deg, #5f7f54, #cf9b4b); box-shadow: 0 0 8px rgba(207,155,75,0.4); }
 
 .map-list { width: 100%; max-height: 40vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px; }
 .map-entry {

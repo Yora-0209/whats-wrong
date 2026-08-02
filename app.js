@@ -145,7 +145,7 @@
       autumn: { fall: "leaf", fc: "rgba(201,120,52,0.9)", grass: "#b0975a", n: 24 },
       winter: { fall: "snow", fc: "rgba(255,255,255,0.92)", grass: "#c9ccc4", n: 34 },
     };
-    let season, cfg, hs, grass = [], fallers = [], foot = [], wparts = [], walker = null;
+    let season, cfg, hs, grass = [], fallers = [], foot = [], wparts = [], hatch = [], walker = null;
     let sceneA = 0, revealed = false, walkStart = 0, goalGlow = 0;
     let goalY = 0, vpX = 0, nearY = 0;
     const FIG = [];
@@ -171,16 +171,16 @@
         sz: (cfg.fall === "snow" || cfg.fall === "pollen" ? 2 : 5) * (0.7 + Math.random() * 0.8) * hs,
       };
     }
-    // 采样"背影小人"的局部粒子:feet 在 oy=0,头顶 ~0.96
+    // 采样"背影小人"局部粒子(妹岛和世/铅笔极简感:清瘦、头略大);密度更高更聚拢
     function buildFigure() {
       FIG.length = 0; let n = 0;
-      while (FIG.length < 190 && n < 9000) {
+      while (FIG.length < 460 && n < 30000) {
         n++;
-        const oy = Math.random() * 0.96, ox = (Math.random() - 0.5) * 0.5;
+        const oy = Math.random() * 0.98, ox = (Math.random() - 0.5) * 0.44;
         let hw;
-        if (oy < 0.64) hw = Math.max(0.05, 0.2 * (1 - Math.abs(oy - 0.32) / 0.52));
-        else if (oy < 0.7) hw = 0.05;
-        else { const dy = (oy - 0.83) / 0.14; const v = 1 - dy * dy; if (v <= 0) continue; hw = 0.14 * Math.sqrt(v); }
+        if (oy < 0.62) hw = Math.max(0.045, 0.16 * (1 - Math.abs(oy - 0.3) / 0.55)); // 清瘦躯干
+        else if (oy < 0.7) hw = 0.045;                                                // 细颈
+        else { const dy = (oy - 0.84) / 0.15; const v = 1 - dy * dy; if (v <= 0) continue; hw = 0.15 * Math.sqrt(v); } // 略大的头
         if (Math.abs(ox) <= hw) FIG.push({ ox, oy });
       }
     }
@@ -188,7 +188,8 @@
       wparts = FIG.map((o) => ({
         x: vpX + (Math.random() - 0.5) * W, y: H * 0.5 + Math.random() * H * 0.6,
         ox: o.ox, oy: o.oy,
-        c: Math.random() < 0.12 ? "rgba(207,155,75,0.9)" : (Math.random() < 0.5 ? "rgba(95,122,74,0.92)" : "rgba(74,68,58,0.85)"),
+        // 铅笔石墨为主 + 少量鼠尾草绿 / 暖琥珀
+        c: Math.random() < 0.08 ? "rgba(207,155,75,0.85)" : (Math.random() < 0.55 ? "rgba(84,84,78,0.9)" : "rgba(107,124,92,0.85)"),
       }));
     }
     function initScene() {
@@ -197,9 +198,13 @@
       goalY = H * 0.52; nearY = H * 1.0; vpX = W * 0.5;
       grass = [];
       if (season !== "winter") {
-        for (let i = 0; i < 70; i++) grass.push({ lat: (Math.random() * 2 - 1) * 1.5, t: 0.05 + Math.random() * 0.9, ph: Math.random() * 6 });
+        for (let i = 0; i < 150; i++) grass.push({ lat: (Math.random() * 2 - 1) * 1.5, t: 0.05 + Math.random() * 0.92, ph: Math.random() * 6, two: Math.random() < 0.5 });
         grass.sort((a, b) => b.t - a.t);
       }
+      // 铅笔排线肌理(统一斜向)
+      hatch = [];
+      for (let i = 0; i < 140; i++) hatch.push({ lat: (Math.random() * 2 - 1) * 1.6, t: 0.03 + Math.random() * 0.95, len: 6 + Math.random() * 10, ang: -0.5 + Math.random() * 0.2 });
+      hatch.sort((a, b) => b.t - a.t);
       fallers = []; for (let i = 0; i < cfg.n; i++) fallers.push(newFaller(true));
       foot = []; revealed = false; sceneA = 0; goalGlow = 0;
       walker = { t: 0.02, steer: 0, steerTarget: 0, phase: 0, glance: 0, footAcc: 0, side: 1 };
@@ -234,7 +239,7 @@
         walker.footAcc += 0.0013 * (1 - 0.35 * walker.t);
         if (walker.footAcc > 0.022) {
           walker.footAcc = 0; walker.side *= -1;
-          const pts = []; for (let k = 0; k < 7; k++) pts.push({ dx: (Math.random() - 0.5) * 2, dy: (Math.random() - 0.5) * 2 });
+          const pts = []; for (let k = 0; k < 12; k++) pts.push({ dx: (Math.random() - 0.5) * 2, dy: (Math.random() - 0.5) * 2 });
           foot.push({ t: walker.t, lat: walker.steer + walker.side * 0.045, pts });
           if (foot.length > 160) foot.shift();
         }
@@ -242,6 +247,19 @@
       if (!revealed && (walker.t > 0.82 || (now - walkStart > 24000 && walker.t > 0.55))) arrive();
     }
 
+    function drawGround(now) {
+      // 一层淡淡的地面
+      const g = ctx.createLinearGradient(0, goalY, 0, H);
+      g.addColorStop(0, "transparent"); g.addColorStop(1, "rgba(124,154,107,0.10)");
+      ctx.fillStyle = g; ctx.fillRect(0, goalY, W, H - goalY);
+      // 铅笔排线肌理
+      ctx.strokeStyle = "rgba(95,110,80,0.07)"; ctx.lineWidth = 1;
+      for (const h of hatch) {
+        const p = proj(h.t, h.lat), s = p.scale * hs;
+        if (s < 0.05) continue;
+        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + Math.cos(h.ang) * h.len * s, p.y + Math.sin(h.ang) * h.len * s); ctx.stroke();
+      }
+    }
     function drawPath() {
       const n0 = proj(0, -0.2), n1 = proj(0, 0.2), fp = proj(0.9, 0);
       const lane = ctx.createLinearGradient(0, nearY, 0, goalY);
@@ -249,13 +267,14 @@
       ctx.fillStyle = lane; ctx.beginPath(); ctx.moveTo(n0.x, n0.y); ctx.lineTo(n1.x, n1.y); ctx.lineTo(fp.x, fp.y); ctx.closePath(); ctx.fill();
     }
     function drawGrass(now) {
-      ctx.strokeStyle = cfg.grass; ctx.lineCap = "round"; ctx.globalAlpha = 0.5;
+      ctx.lineCap = "round"; ctx.globalAlpha = 0.6;
       for (const b of grass) {
         const p = proj(b.t, b.lat), s = p.scale * hs;
         if (s < 0.05) continue;
         const sway = Math.sin(now * 0.001 + b.ph) * 3 * s;
-        ctx.lineWidth = 1.4 * s;
-        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.quadraticCurveTo(p.x + sway * 0.5, p.y - 8 * s, p.x + sway, p.y - 14 * s); ctx.stroke();
+        ctx.strokeStyle = b.two ? cfg.grass : "#6f8f60";
+        ctx.lineWidth = 1.3 * s;
+        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.quadraticCurveTo(p.x + sway * 0.5, p.y - 8 * s, p.x + sway, p.y - 15 * s); ctx.stroke();
       }
       ctx.globalAlpha = 1;
     }
@@ -271,11 +290,11 @@
       }
     }
     function drawFoot() {
-      // 脚印保留:每个脚印是一小簇沙粒,长驻不消
       for (let i = 0; i < foot.length; i++) {
         const p = foot[i], q = proj(p.t, p.lat), s = q.scale * hs;
-        ctx.fillStyle = "rgba(120,100,70,0.5)";
-        for (const g of p.pts) ctx.fillRect(q.x + g.dx * 5 * s, q.y + g.dy * 2.4 * s, Math.max(1, 1.4 * s), Math.max(1, 1.4 * s));
+        ctx.fillStyle = "rgba(78,66,48,0.62)";
+        const d = Math.max(1.2, 1.7 * s);
+        for (const g of p.pts) ctx.fillRect(q.x + g.dx * 5.5 * s, q.y + g.dy * 2.6 * s, d, d);
       }
     }
     function drawGoalGlow() {
@@ -286,17 +305,17 @@
     }
     function drawWalker(now) {
       const b = proj(walker.t, walker.steer);
-      const size = 150 * b.scale * hs;
+      const size = 158 * b.scale * hs;
       const bob = Math.sin(walker.phase) * 2 * b.scale * hs;
-      const dot = Math.max(1, 1.7 * b.scale * hs);
+      const dot = Math.max(1, 1.5 * b.scale * hs);
       ctx.fillStyle = "rgba(70,85,60,0.14)";
-      ctx.beginPath(); ctx.ellipse(b.x, b.y, size * 0.22, size * 0.06, 0, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(b.x, b.y, size * 0.2, size * 0.055, 0, 0, 7); ctx.fill();
       for (const p of wparts) {
         const leg = p.oy < 0.34 ? Math.sin(walker.phase + (p.ox > 0 ? 0 : Math.PI)) * 3 * b.scale * hs : 0;
         const tx = b.x + p.ox * size;
         const ty = b.y - p.oy * size + bob + leg;
-        p.x += (tx - p.x) * 0.2 + (Math.random() - 0.5) * 0.4;
-        p.y += (ty - p.y) * 0.2 + (Math.random() - 0.5) * 0.4;
+        p.x += (tx - p.x) * 0.22 + (Math.random() - 0.5) * 0.25;
+        p.y += (ty - p.y) * 0.22 + (Math.random() - 0.5) * 0.25;
         ctx.fillStyle = p.c; ctx.fillRect(p.x, p.y, dot, dot);
       }
       if (walker.glance > 0.25) {
@@ -318,7 +337,7 @@
       sceneA += (1 - sceneA) * 0.04;
       if (revealed) goalGlow += (1 - goalGlow) * 0.04;
       ctx.save(); ctx.globalAlpha = sceneA;
-      drawPath(); drawGrass(now); drawFoot();
+      drawGround(now); drawPath(); drawGrass(now); drawFoot();
       ctx.restore();
       drawGoalGlow();
       drawTitle(now);                 // 「咋啦」始终在场,是小人走向的终点
@@ -584,6 +603,12 @@
   /* ---------- 情绪地图 ---------- */
   $("toMapBtn").addEventListener("click", () => { renderMap(); setView("map"); });
   $("backHomeBtn").addEventListener("click", resetToHome);
+  // 左上角返回键:输入页→首页;结果/地图页→输入页
+  $("backBtn").addEventListener("click", () => {
+    const v = document.body.getAttribute("data-view");
+    if (v === "input") resetToHome();
+    else if (v === "result" || v === "map") setView("input");
+  });
 
   function loadMap() {
     try { return JSON.parse(localStorage.getItem(MAP_KEY)) || []; }
@@ -630,7 +655,6 @@
   function renderHeatmap(map) {
     const box = $("heatmap");
     box.innerHTML = "";
-
     const byDay = {};
     map.forEach((e) => {
       const key = dayKey(new Date(e.at));
@@ -639,25 +663,19 @@
         byDay[key] = { intensity: inten, weather: e.weather || e.emotion || "" };
       }
     });
-
-    const WEEKS = 12;
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const start = new Date(today);
-    start.setDate(start.getDate() - (WEEKS * 7 - 1));
-    const backToMon = (start.getDay() + 6) % 7;
-    start.setDate(start.getDate() - backToMon);
-
-    for (let d = new Date(start); d <= today; d.setDate(d.getDate() + 1)) {
-      const key = dayKey(d);
-      const cell = document.createElement("div");
-      cell.className = "heat-cell";
-      const hit = byDay[key];
-      if (hit && hit.intensity > 0) {
-        cell.dataset.i = String(Math.min(5, Math.max(1, hit.intensity)));
-        cell.title = `${key} · ${hit.weather}`;
-      } else {
-        cell.title = key;
-      }
+    const now = new Date(), y = now.getFullYear(), m = now.getMonth();
+    $("calTitle").textContent = `${y} 年 ${m + 1} 月`;
+    ["一", "二", "三", "四", "五", "六", "日"].forEach((w) => {
+      const h = document.createElement("div"); h.className = "cal-h"; h.textContent = w; box.appendChild(h);
+    });
+    const offset = (new Date(y, m, 1).getDay() + 6) % 7; // 周一为首
+    for (let i = 0; i < offset; i++) { const b = document.createElement("div"); b.className = "cal-b"; box.appendChild(b); }
+    const days = new Date(y, m + 1, 0).getDate();
+    const p = (n) => String(n).padStart(2, "0");
+    for (let d = 1; d <= days; d++) {
+      const key = `${y}-${p(m + 1)}-${p(d)}`, hit = byDay[key];
+      const cell = document.createElement("div"); cell.className = "cal-d"; cell.textContent = d;
+      if (hit && hit.intensity > 0) { cell.dataset.i = String(Math.min(5, Math.max(1, hit.intensity))); cell.title = `${key} · ${hit.weather}`; }
       box.appendChild(cell);
     }
   }
