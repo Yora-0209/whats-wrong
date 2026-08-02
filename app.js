@@ -102,8 +102,9 @@
     const glowC = "rgba(207,155,75,0.95)";
     let tp = [], titleFade = 0, t0 = 0;
 
-    function buildTitle() {
+    function buildTitle(ox, oy) {
       if (!W || !H) return;
+      const useO = ox != null;
       const oc = document.createElement("canvas");
       oc.width = W; oc.height = H;
       const o = oc.getContext("2d");
@@ -118,7 +119,8 @@
         for (let x = 0; x < W; x += step)
           if (data[(y * W + x) * 4 + 3] > 128)
             tp.push({
-              x: W / 2 + (Math.random() - 0.5) * W, y: H / 2 + (Math.random() - 0.5) * H,
+              x: useO ? ox + (Math.random() - 0.5) * 70 : W / 2 + (Math.random() - 0.5) * W,
+              y: useO ? oy + (Math.random() - 0.5) * 70 : H / 2 + (Math.random() - 0.5) * H,
               tx: x, ty: y, vx: 0, vy: 0,
               s: Math.random() < 0.5 ? 1.4 : 2,
               c: Math.random() < 0.06 ? glowC : ink[(Math.random() * ink.length) | 0],
@@ -374,7 +376,7 @@
       raf = requestAnimationFrame(tick);
     }
     function start() { if (running) return; resize(); buildTitle(); buildFigure(); running = true; t0 = performance.now(); raf = requestAnimationFrame(tick); }
-    function reset() { document.body.classList.remove("walking"); mode = "title"; revealed = false; resize(); buildTitle(); }
+    function reset(o) { document.body.classList.remove("walking"); mode = "title"; revealed = false; resize(); if (o) buildTitle(o.x, o.y); else buildTitle(); }
 
     function onMove(e) {
       const pt = e.touches ? e.touches[0] : e, r = cv.getBoundingClientRect();
@@ -594,20 +596,22 @@
   });
 
   $("burnBtn").addEventListener("click", () => {
-    document.body.classList.add("burning");
+    if (document.body.classList.contains("crumpling")) return;
+    document.body.classList.add("crumpling");
     setTimeout(() => {
-      document.body.classList.remove("burning");
-      resetToHome();
-    }, 900);
+      document.body.classList.remove("crumpling");
+      // 从视野中央迸成沙,重新聚为「咋啦」
+      resetToHome({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+    }, 1050);
   });
 
-  function resetToHome() {
+  function resetToHome(origin) {
     $("feelingText").value = "";
     selectedPlace = "";
     document.querySelectorAll("#placeChips .chip").forEach((c) => c.classList.remove("active"));
     document.body.classList.remove("crisis");
     setView("intro");   // 先切回首页,让画布重新可见(否则 clientWidth=0 会导致重建失败)
-    Stage.reset();
+    Stage.reset(origin);
   }
 
   /* ---------- 情绪地图 ---------- */
