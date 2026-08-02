@@ -25,19 +25,13 @@
 
   <main class="stage">
 
-    <!-- 开屏:插画风盒子,3D 拉开 -->
+    <!-- 开屏:沙画粒子 hero -->
     <section class="view view-intro" aria-label="开屏">
-      <div class="title" id="introTitle">
-        <h1 class="zala">咋啦</h1>
+      <canvas id="sand" class="sand" role="button" tabindex="0" aria-label="走进来"></canvas>
+      <div class="intro-cap">
         <p class="zala-en">What's&nbsp;wrong?</p>
+        <p class="hint" id="introHint">轻触，走进来</p>
       </div>
-      <div class="portal-scene" id="portalScene" role="button" tabindex="0" aria-label="拉开这只盒子，走进来">
-        <div class="scene3d" id="scene3d">
-          <img class="box box-closed" src="./images/drawer-closed.png" alt="一只绿色的木质小盒子" draggable="false" />
-          <img class="box box-open" src="./images/drawer-open.png" alt="盒子打开，里面是一个温暖的小世界" draggable="false" />
-        </div>
-      </div>
-      <p class="hint" id="introHint">轻轻拉开</p>
     </section>
 
     <!-- 投放情绪 · 卡片 -->

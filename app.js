@@ -85,56 +85,120 @@
   $("soundToggle").addEventListener("click", Sound.toggle);
 
   /* =======================================================
-     开屏:第一下拉开抽屉(漩涡+咋啦浮现),第二下走进来
+     开屏:沙画粒子 hero —— 「咋啦」从沙中凝聚,鼠标追随扰动
      ======================================================= */
-  const scene = $("portalScene");
-  const scene3d = $("scene3d");
-  let introStage = "closed";
-
-  // 预加载「打开」态插画,切换时不闪白
-  new Image().src = "./images/drawer-open.png";
-
-  function openPortal() {
-    if (introStage !== "closed") return;
-    introStage = "open";
-    scene.classList.add("opening");
-    document.body.classList.add("opened");
-    scene3d.style.removeProperty("--tx");
-    scene3d.style.removeProperty("--ty");
-    Sound.playOpen();
-    const hint = $("introHint");
-    hint.style.opacity = "0";
-    setTimeout(() => { hint.textContent = "轻触，走进来"; hint.style.opacity = ""; }, 2200);
-  }
-
   function enterInput() {
+    Sand.stop();
+    Sound.playOpen();
     setView("input");
     setTimeout(() => $("feelingText").focus(), 300);
   }
 
-  scene.addEventListener("click", () => {
-    if (introStage === "closed") openPortal();
-    else enterInput();
-  });
-  scene.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      if (introStage === "closed") openPortal(); else enterInput();
+  const Sand = (() => {
+    const cv = $("sand");
+    const ctx = cv.getContext("2d");
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const mouse = { x: -9999, y: -9999 };
+    const REPEL = 96;
+    let W = 0, H = 0, DPR = 1, parts = [], raf = null, running = false, t0 = 0;
+
+    const ink = ["rgba(74,68,58,0.92)", "rgba(107,124,92,0.9)", "rgba(124,154,107,0.9)"];
+    const glow = "rgba(207,155,75,0.95)"; // 少量暖琥珀萤火
+
+    function sampleTargets() {
+      const oc = document.createElement("canvas");
+      oc.width = W; oc.height = H;
+      const o = oc.getContext("2d");
+      o.fillStyle = "#000"; o.textAlign = "center"; o.textBaseline = "middle";
+      const fs = Math.min(W * 0.30, H * 0.34, 300);
+      o.font = `500 ${fs}px "Songti SC","STSong","SimSun",serif`;
+      o.fillText("咋啦", W / 2, H * 0.42);
+      const data = o.getImageData(0, 0, W, H).data;
+      const step = Math.max(4, Math.round(fs / 58));
+      const pts = [];
+      for (let y = 0; y < H; y += step)
+        for (let x = 0; x < W; x += step)
+          if (data[(y * W + x) * 4 + 3] > 128) pts.push([x, y]);
+      return pts;
     }
+
+    function build() {
+      W = cv.clientWidth; H = cv.clientHeight;
+      DPR = Math.min(2, window.devicePixelRatio || 1);
+      cv.width = W * DPR; cv.height = H * DPR;
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      const pts = sampleTargets();
+      parts = pts.map((p) => ({
+        x: W / 2 + (Math.random() - 0.5) * W,
+        y: H / 2 + (Math.random() - 0.5) * H,
+        tx: p[0], ty: p[1], vx: 0, vy: 0,
+        s: Math.random() < 0.5 ? 1.4 : 2,
+        c: Math.random() < 0.06 ? glow : ink[(Math.random() * ink.length) | 0],
+        ph: Math.random() * Math.PI * 2,
+      }));
+    }
+
+    function tick(now) {
+      if (!running) return;
+      const t = now - t0;
+      ctx.clearRect(0, 0, W, H);
+      for (let i = 0; i < parts.length; i++) {
+        const p = parts[i];
+        const jx = reduce ? 0 : Math.cos(p.ph + t * 0.0011) * 0.35;
+        const jy = reduce ? 0 : Math.sin(p.ph + t * 0.0013) * 0.35;
+        let ax = (p.tx + jx - p.x) * 0.022;
+        let ay = (p.ty + jy - p.y) * 0.022;
+        const dx = p.x - mouse.x, dy = p.y - mouse.y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < REPEL * REPEL) {
+          const d = Math.sqrt(d2) || 1;
+          const f = (1 - d / REPEL) * 4.2;
+          ax += (dx / d) * f; ay += (dy / d) * f;
+        }
+        p.vx = (p.vx + ax) * 0.85;
+        p.vy = (p.vy + ay) * 0.85;
+        p.x += p.vx; p.y += p.vy;
+        ctx.fillStyle = p.c;
+        ctx.fillRect(p.x, p.y, p.s, p.s);
+      }
+      raf = requestAnimationFrame(tick);
+    }
+
+    function start() {
+      if (running) return;
+      build();
+      running = true; t0 = performance.now();
+      raf = requestAnimationFrame(tick);
+    }
+    function stop() {
+      running = false;
+      if (raf) { cancelAnimationFrame(raf); raf = null; }
+    }
+
+    function onMove(e) {
+      const pt = e.touches ? e.touches[0] : e;
+      const r = cv.getBoundingClientRect();
+      mouse.x = pt.clientX - r.left; mouse.y = pt.clientY - r.top;
+    }
+    cv.addEventListener("pointermove", onMove);
+    cv.addEventListener("pointerleave", () => { mouse.x = mouse.y = -9999; });
+    cv.addEventListener("touchmove", onMove, { passive: true });
+
+    let rt = null;
+    window.addEventListener("resize", () => {
+      if (!running) return;
+      clearTimeout(rt);
+      rt = setTimeout(build, 200);
+    });
+
+    return { start, stop };
+  })();
+
+  $("sand").addEventListener("click", enterInput);
+  $("sand").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); enterInput(); }
   });
-  // 桌面端:鼠标移动带来轻微 3D 视差
-  scene.addEventListener("pointermove", (e) => {
-    if (introStage !== "closed") return;
-    const r = scene.getBoundingClientRect();
-    const px = (e.clientX - r.left) / r.width - 0.5;
-    const py = (e.clientY - r.top) / r.height - 0.5;
-    scene3d.style.setProperty("--tx", (px * 12).toFixed(2) + "deg");
-    scene3d.style.setProperty("--ty", (-py * 12).toFixed(2) + "deg");
-  });
-  scene.addEventListener("pointerleave", () => {
-    scene3d.style.removeProperty("--tx");
-    scene3d.style.removeProperty("--ty");
-  });
+  Sand.start();
 
   /* =======================================================
      语音输入(SpeechRecognition,支持则用,不支持则提示)
@@ -344,12 +408,8 @@
     selectedPlace = "";
     document.querySelectorAll("#placeChips .chip").forEach((c) => c.classList.remove("active"));
     document.body.classList.remove("crisis");
-    scene.classList.remove("opening");
-    document.body.classList.remove("opened");
-    introStage = "closed";
-    $("introHint").textContent = "轻轻拉开";
-    $("introHint").style.opacity = "";
     setView("intro");
+    Sand.start();
   }
 
   /* ---------- 情绪地图 ---------- */
