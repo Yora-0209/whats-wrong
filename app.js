@@ -103,6 +103,7 @@
     let tp = [], titleFade = 0, t0 = 0;
 
     function buildTitle() {
+      if (!W || !H) return;
       const oc = document.createElement("canvas");
       oc.width = W; oc.height = H;
       const o = oc.getContext("2d");
@@ -234,9 +235,9 @@
         if (mouse.x > 0 && mouse.y > goalY - 40) walker.steerTarget = clamp((mouse.x - vpX) / (W * 0.34), -1, 1);
         else walker.steerTarget *= 0.95;
         walker.steer += (walker.steerTarget - walker.steer) * 0.05;
-        walker.t += 0.0013 * (1 - 0.35 * walker.t);
-        walker.phase += 0.2;
-        walker.footAcc += 0.0013 * (1 - 0.35 * walker.t);
+        walker.t += 0.0024 * (1 - 0.35 * walker.t);
+        walker.phase += 0.26;
+        walker.footAcc += 0.0024 * (1 - 0.35 * walker.t);
         if (walker.footAcc > 0.022) {
           walker.footAcc = 0; walker.side *= -1;
           const pts = []; for (let k = 0; k < 12; k++) pts.push({ dx: (Math.random() - 0.5) * 2, dy: (Math.random() - 0.5) * 2 });
@@ -303,27 +304,41 @@
       g.addColorStop(0, `rgba(240,201,120,${0.22 * goalGlow})`); g.addColorStop(1, "transparent");
       ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
     }
+    // 简笔画/铅笔线条小人(小头背影,由近及远)
     function drawWalker(now) {
       const b = proj(walker.t, walker.steer);
-      const size = 158 * b.scale * hs;
-      const bob = Math.sin(walker.phase) * 2 * b.scale * hs;
-      const dot = Math.max(1, 1.5 * b.scale * hs);
+      const s = Math.max(0.14, b.scale * hs);
+      const cx = b.x, footY = b.y;
+      const legLen = 20 * s, bodyLen = 24 * s, headR = 5 * s; // 小头
+      const bob = -Math.abs(Math.sin(walker.phase)) * 1.5 * s;
+      const hipY = footY - legLen + bob, shoulderY = hipY - bodyLen, headCY = shoulderY - headR - 1.5 * s;
+      const sw = Math.sin(walker.phase) * 8 * s;              // 腿摆
+      const aw = Math.sin(walker.phase + Math.PI) * 4.5 * s;  // 臂摆
+      // 影子
       ctx.fillStyle = "rgba(70,85,60,0.14)";
-      ctx.beginPath(); ctx.ellipse(b.x, b.y, size * 0.2, size * 0.055, 0, 0, 7); ctx.fill();
-      for (const p of wparts) {
-        const leg = p.oy < 0.34 ? Math.sin(walker.phase + (p.ox > 0 ? 0 : Math.PI)) * 3 * b.scale * hs : 0;
-        const tx = b.x + p.ox * size;
-        const ty = b.y - p.oy * size + bob + leg;
-        p.x += (tx - p.x) * 0.22 + (Math.random() - 0.5) * 0.25;
-        p.y += (ty - p.y) * 0.22 + (Math.random() - 0.5) * 0.25;
-        ctx.fillStyle = p.c; ctx.fillRect(p.x, p.y, dot, dot);
-      }
-      if (walker.glance > 0.25) {
-        const a = walker.glance, hy = b.y - size * 0.84, s = Math.max(0.6, b.scale * hs);
-        ctx.fillStyle = `rgba(244,239,227,${0.9 * a})`;
-        ctx.beginPath(); ctx.arc(b.x - 3 * s, hy, 1.6 * s, 0, 7); ctx.arc(b.x + 3 * s, hy, 1.6 * s, 0, 7); ctx.fill();
-        ctx.strokeStyle = `rgba(244,239,227,${0.9 * a})`; ctx.lineWidth = 1.3 * s;
-        ctx.beginPath(); ctx.arc(b.x, hy + 2.5 * s, 2.6 * s, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(cx, footY, 9 * s, 2.6 * s, 0, 0, 7); ctx.fill();
+      ctx.lineCap = "round"; ctx.lineJoin = "round";
+      // 铅笔感:主线 + 一条更淡的偏移线
+      const pencil = (fn) => {
+        ctx.strokeStyle = "rgba(74,72,64,0.92)"; ctx.lineWidth = 2.2 * s; fn(0, 0);
+        ctx.strokeStyle = "rgba(74,72,64,0.3)"; ctx.lineWidth = 1.1 * s; fn(0.7 * s, -0.5 * s);
+      };
+      // 腿
+      pencil((dx, dy) => { ctx.beginPath(); ctx.moveTo(cx + dx, hipY + dy); ctx.lineTo(cx + sw + dx, footY + dy); ctx.moveTo(cx + dx, hipY + dy); ctx.lineTo(cx - sw + dx, footY + dy); ctx.stroke(); });
+      // 躯干
+      pencil((dx, dy) => { ctx.beginPath(); ctx.moveTo(cx + dx, hipY + dy); ctx.lineTo(cx + dx, shoulderY + dy); ctx.stroke(); });
+      // 手臂
+      pencil((dx, dy) => { ctx.beginPath(); ctx.moveTo(cx + dx, shoulderY + 3 * s + dy); ctx.lineTo(cx + aw + dx, shoulderY + 12 * s + dy); ctx.moveTo(cx + dx, shoulderY + 3 * s + dy); ctx.lineTo(cx - aw + dx, shoulderY + 12 * s + dy); ctx.stroke(); });
+      // 小头(背影:空心圆)
+      ctx.strokeStyle = "rgba(74,72,64,0.95)"; ctx.lineWidth = 2 * s;
+      ctx.beginPath(); ctx.arc(cx, headCY, headR, 0, 7); ctx.stroke();
+      // 回眸:转过头露出小脸
+      if (walker.glance > 0.3) {
+        const a = walker.glance;
+        ctx.fillStyle = `rgba(74,72,64,${0.95 * a})`;
+        ctx.beginPath(); ctx.arc(cx - 1.8 * s, headCY, 0.9 * s, 0, 7); ctx.arc(cx + 1.8 * s, headCY, 0.9 * s, 0, 7); ctx.fill();
+        ctx.strokeStyle = `rgba(74,72,64,${0.9 * a})`; ctx.lineWidth = 1 * s;
+        ctx.beginPath(); ctx.arc(cx, headCY + 1.6 * s, 1.6 * s, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
       }
     }
     function drawFirefly(now) {
@@ -596,8 +611,8 @@
     selectedPlace = "";
     document.querySelectorAll("#placeChips .chip").forEach((c) => c.classList.remove("active"));
     document.body.classList.remove("crisis");
+    setView("intro");   // 先切回首页,让画布重新可见(否则 clientWidth=0 会导致重建失败)
     Stage.reset();
-    setView("intro");
   }
 
   /* ---------- 情绪地图 ---------- */
