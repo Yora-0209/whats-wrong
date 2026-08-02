@@ -596,9 +596,13 @@
     resetToHome();
   });
 
+  /* ---------- 「让它消失」:放大居中 → 抽帧揉成纸团 → 碎成沙聚回「咋啦」 ---------- */
+  const CRUMPLE = ["./images/crumple-1.jpg", "./images/crumple-2.jpg", "./images/crumple-3.jpg", "./images/crumple-4.jpg"];
+  CRUMPLE.forEach((src) => { const im = new Image(); im.src = src; }); // 预加载,避免抽帧闪白
+
   $("burnBtn").addEventListener("click", () => {
     if (document.body.classList.contains("crumpling")) return;
-    const card = $("echoCard");
+    const card = $("echoCard"), fx = $("crumpleFx");
     // 1) 浅浅放大并移到视野正中
     const r = card.getBoundingClientRect();
     const cx = window.innerWidth / 2 - (r.left + r.width / 2);
@@ -607,15 +611,33 @@
     card.style.setProperty("--cy", cy.toFixed(1) + "px");
     document.body.classList.add("crumpling");
     card.classList.add("lift");
-    // 2) 揉成纸团(抽帧)
-    setTimeout(() => card.classList.add("crumple"), 520);
+
+    // 2) 逐帧把纸揉紧(摊平 → 微皱 → 大皱 → 纸团)
+    const scales = [1, 0.84, 0.68, 0.5];
+    const FRAME = 170;
+    let i = 0, stepper = null;
+    setTimeout(() => {
+      fx.style.backgroundImage = `url(${CRUMPLE[0]})`;
+      fx.style.transform = `translate(-50%, -50%) scale(${scales[0]})`;
+      fx.classList.add("on");
+      card.classList.add("fade");
+      stepper = setInterval(() => {
+        i++;
+        if (i >= CRUMPLE.length) { clearInterval(stepper); return; }
+        fx.style.backgroundImage = `url(${CRUMPLE[i]})`;
+        fx.style.transform = `translate(-50%, -50%) scale(${scales[i]})`;
+      }, FRAME);
+    }, 520);
+
     // 3) 纸团碎成沙,从视野正中迸出并聚回「咋啦」
     setTimeout(() => {
-      card.classList.remove("lift", "crumple");
+      if (stepper) clearInterval(stepper);
+      fx.classList.remove("on");
+      card.classList.remove("lift", "fade");
       card.style.removeProperty("--cx"); card.style.removeProperty("--cy");
       document.body.classList.remove("crumpling");
       resetToHome({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-    }, 520 + 780);
+    }, 520 + FRAME * 3 + 340);
   });
 
   function resetToHome(origin) {
