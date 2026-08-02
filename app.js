@@ -146,7 +146,7 @@
       autumn: { fall: "leaf", fc: "rgba(201,120,52,0.9)", grass: "#b0975a", n: 24 },
       winter: { fall: "snow", fc: "rgba(255,255,255,0.92)", grass: "#c9ccc4", n: 34 },
     };
-    let season, cfg, hs, grass = [], fallers = [], trail = [], wparts = [], hatch = [], walker = null;
+    let season, cfg, hs, grass = [], fallers = [], trail = [], sparks = [], wparts = [], hatch = [], walker = null;
     let sceneA = 0, revealed = false, walkStart = 0, goalGlow = 0;
     let goalY = 0, vpX = 0, nearY = 0;
     const FIG = [];
@@ -208,7 +208,9 @@
       hatch.sort((a, b) => b.t - a.t);
       fallers = []; for (let i = 0; i < cfg.n; i++) fallers.push(newFaller(true));
       trail = []; revealed = false; sceneA = 0; goalGlow = 0;
-      walker = { t: 0.02, steer: 0, steerTarget: 0, phase: 0, glance: 0 };
+      walker = { t: 0.02, steer: 0, steerTarget: 0, phase: 0, glance: 0, rush: false };
+      sparks = [];
+      for (let i = 0; i < 15; i++) sparks.push({ ox: Math.random() * 2 - 1, oy: Math.random() * 2 - 1, ph: Math.random() * 6.28, rr: 0.4 + Math.random() * 0.6 });
     }
     function enterWalk() {
       if (mode === "walk") return;
@@ -224,25 +226,33 @@
       setTimeout(() => { setView("input"); setTimeout(() => $("feelingText").focus(), 300); }, 1300);
     }
 
-    // 光之魂:一缕暖光飘向「咋啦」,沿途留下渐隐光尘
+    // 光之魂:一小簇会闪的光斑,飘向「咋啦」;点击可立即抵达
     function updateWalker(now) {
       const b = proj(walker.t, walker.steer);
       const cy = b.y - 30 * b.scale * hs;
-      const over = mouse.x > 0 && Math.hypot(mouse.x - b.x, mouse.y - cy) < 60 * b.scale * hs + 30;
-      if (revealed) { walker.glance = Math.min(1, walker.glance + 0.05); }
-      else if (over) { walker.glance = Math.min(1, walker.glance + 0.08); } // 悬停:停下、变亮
+      const s = b.scale * hs;
+      walker.phase += 0.08;
+      if (revealed) return;
+      if (walker.rush) {
+        walker.glance = Math.min(1, walker.glance + 0.1);
+        walker.t += 0.05;
+        trail.push({ x: b.x, y: cy, a: 1, r: (5 + Math.random() * 4) * s });
+        if (trail.length > 150) trail.shift();
+        if (walker.t > 0.9) arrive();
+        return;
+      }
+      const over = mouse.x > 0 && Math.hypot(mouse.x - b.x, mouse.y - cy) < 60 * s + 30;
+      if (over) { walker.glance = Math.min(1, walker.glance + 0.08); } // 悬停:停下、变亮
       else {
         walker.glance = Math.max(0, walker.glance - 0.04);
         if (mouse.x > 0 && mouse.y > goalY - 60) walker.steerTarget = clamp((mouse.x - vpX) / (W * 0.34), -1, 1);
         else walker.steerTarget *= 0.95;
         walker.steer += (walker.steerTarget - walker.steer) * 0.05;
-        walker.t += 0.0022 * (1 - 0.3 * walker.t);
-        const s = b.scale * hs;
+        walker.t += 0.003 * (1 - 0.3 * walker.t);
         trail.push({ x: b.x + (Math.random() - 0.5) * 4 * s, y: cy + (Math.random() - 0.5) * 4 * s, a: 1, r: (5 + Math.random() * 4) * s });
         if (trail.length > 150) trail.shift();
       }
-      walker.phase += 0.05;
-      if (!revealed && (walker.t > 0.85 || (now - walkStart > 20000 && walker.t > 0.55))) arrive();
+      if (walker.t > 0.85 || (now - walkStart > 16000 && walker.t > 0.55)) arrive();
     }
 
     function drawGround(now) {
@@ -288,13 +298,15 @@
       }
     }
     function drawTrail() {
+      ctx.save(); ctx.globalCompositeOperation = "lighter";
       for (let i = trail.length - 1; i >= 0; i--) {
-        const p = trail[i]; p.a -= 0.006;
+        const p = trail[i]; p.a -= 0.008;
         if (p.a <= 0) { trail.splice(i, 1); continue; }
         const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
-        g.addColorStop(0, `rgba(240,201,120,${0.45 * p.a})`); g.addColorStop(1, "transparent");
+        g.addColorStop(0, `rgba(255,240,205,${0.4 * p.a})`); g.addColorStop(1, "transparent");
         ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill();
       }
+      ctx.restore();
     }
     function drawGoalGlow() {
       if (goalGlow < 0.02) return;
@@ -302,31 +314,31 @@
       g.addColorStop(0, `rgba(240,201,120,${0.22 * goalGlow})`); g.addColorStop(1, "transparent");
       ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
     }
-    // 光之魂:一颗会呼吸的暖光,飘向「咋啦」
+    // 光之魂:一小簇会闪的细碎光斑(叠加发光、通透)
     function drawWalker(now) {
       const b = proj(walker.t, walker.steer);
       const s = Math.max(0.16, b.scale * hs);
       const cx = b.x, cy = b.y - 30 * s;
-      const pulse = 1 + Math.sin(walker.phase * 3) * 0.08;
-      const bright = 0.6 + 0.4 * walker.glance;
-      // 外层光晕
-      const R = 30 * s * pulse;
-      let g = ctx.createRadialGradient(cx, cy, 0, cx, cy, R);
-      g.addColorStop(0, `rgba(246,221,176,${0.5 * bright})`);
-      g.addColorStop(0.4, `rgba(207,155,75,${0.26 * bright})`);
-      g.addColorStop(1, "transparent");
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.fill();
-      // 明亮内核
-      const cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, 9 * s);
-      cg.addColorStop(0, `rgba(255,250,240,${0.95 * bright})`); cg.addColorStop(1, "rgba(246,221,176,0)");
-      ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(cx, cy, 9 * s, 0, 7); ctx.fill();
-      // 环绕的小光点
-      for (let k = 0; k < 3; k++) {
-        const ang = walker.phase * 2 + k * 2.094;
-        const sx = cx + Math.cos(ang) * 16 * s, sy = cy + Math.sin(ang) * 16 * s * 0.6;
-        ctx.fillStyle = `rgba(255,240,200,${0.7 * bright})`;
-        ctx.beginPath(); ctx.arc(sx, sy, 1.6 * s, 0, 7); ctx.fill();
+      const bright = 0.7 + 0.3 * walker.glance;
+      const R = 22 * s;
+      ctx.save(); ctx.globalCompositeOperation = "lighter";
+      // 柔和整体光晕
+      let g = ctx.createRadialGradient(cx, cy, 0, cx, cy, R * 1.7);
+      g.addColorStop(0, `rgba(255,246,220,${0.2 * bright})`); g.addColorStop(1, "transparent");
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R * 1.7, 0, 7); ctx.fill();
+      // 细碎光斑(各自闪烁、轻微游移)
+      for (const sp of sparks) {
+        const fl = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(walker.phase * 1.6 + sp.ph * 3));
+        const px = cx + sp.ox * R * sp.rr + Math.cos(walker.phase * 0.5 + sp.ph) * 2 * s;
+        const py = cy + sp.oy * R * sp.rr + Math.sin(walker.phase * 0.5 + sp.ph) * 2 * s;
+        const rr = (1.4 + sp.rr * 1.6) * s;
+        const gg = ctx.createRadialGradient(px, py, 0, px, py, rr * 2.6);
+        gg.addColorStop(0, `rgba(255,250,235,${0.9 * fl * bright})`);
+        gg.addColorStop(0.5, `rgba(244,222,172,${0.36 * fl * bright})`);
+        gg.addColorStop(1, "transparent");
+        ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(px, py, rr * 2.6, 0, 7); ctx.fill();
       }
+      ctx.restore();
     }
     function drawFirefly(now) {
       if (mouse.x < 0) return;
@@ -371,13 +383,9 @@
     cv.addEventListener("pointermove", onMove);
     cv.addEventListener("pointerleave", () => { mouse.x = mouse.y = -9999; });
     cv.addEventListener("touchmove", onMove, { passive: true });
-    cv.addEventListener("click", (e) => {
-      const r = cv.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+    cv.addEventListener("click", () => {
       if (mode === "title") { enterWalk(); return; }
-      if (revealed) return;
-      const wp = proj(walker.t, walker.steer);
-      if (Math.hypot(mx - wp.x, my - (wp.y - 70 * wp.scale * hs)) < 62 * wp.scale * hs + 20) { walker.glance = 1; return; } // 点小人:回眸
-      if (my > goalY - 40) walker.steerTarget = clamp((mx - vpX) / (W * 0.34), -1, 1); // 点地面:改道
+      if (!revealed && walker) walker.rush = true; // 点击任意处:光立即飞向「咋啦」
     });
     cv.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (mode === "title") enterWalk(); }
