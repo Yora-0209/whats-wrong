@@ -70,19 +70,75 @@
       noise.start(now); noise.stop(now + dur);
     }
 
+    /* 环境轻音乐:程序化柔和 pad,只在鼠标移动/点击/滚动时渐起,静止即渐隐 */
+    let ambient = null, idleTimer = null;
+    const AMB_LEVEL = 0.11;
+    function ensureAmbient() {
+      const ac = ensure();
+      if (!ac) return null;
+      if (ambient) return ambient;
+      const out = ac.createGain(); out.gain.value = 0.0001;
+      const lp = ac.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 820; lp.Q.value = 0.3;
+      const lfo = ac.createOscillator(); lfo.type = "sine"; lfo.frequency.value = 0.05;
+      const lfoGain = ac.createGain(); lfoGain.gain.value = 220;
+      lfo.connect(lfoGain); lfoGain.connect(lp.frequency); lfo.start();
+      out.connect(lp); lp.connect(ac.destination);
+      // C 大调九和弦味道的低八度铺底,多把微失谐震荡叠出温润的呼吸感
+      [130.81, 196.00, 261.63, 329.63, 392.00].forEach((f, i) => {
+        [0, 0.5, -0.5].forEach((det) => {
+          const o = ac.createOscillator();
+          o.type = i < 2 ? "triangle" : "sine";
+          o.frequency.value = f; o.detune.value = det;
+          const g = ac.createGain(); g.gain.value = 0.14 / (i + 1);
+          o.connect(g); g.connect(out); o.start();
+        });
+      });
+      ambient = { out };
+      return ambient;
+    }
+    // 有鼠标移动/点击时:柔和拉起音量;静止约 0.5s 后:渐隐至无声
+    function activity() {
+      if (muted) return;
+      const ac = ensure(); if (!ac) return;
+      const amb = ensureAmbient(); if (!amb) return;
+      const now = ac.currentTime;
+      amb.out.gain.cancelScheduledValues(now);
+      amb.out.gain.setTargetAtTime(AMB_LEVEL, now, 0.18);
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        const t = ac.currentTime;
+        amb.out.gain.cancelScheduledValues(t);
+        amb.out.gain.setTargetAtTime(0.0001, t, 0.6);
+      }, 480);
+    }
+    function silenceAmbient() {
+      clearTimeout(idleTimer);
+      if (ambient && ctx) {
+        const t = ctx.currentTime;
+        ambient.out.gain.cancelScheduledValues(t);
+        ambient.out.gain.setTargetAtTime(0.0001, t, 0.2);
+      }
+    }
+
     function setMuted(m) {
       muted = m;
       localStorage.setItem(MUTE_KEY, m ? "1" : "0");
       document.body.classList.toggle("muted", m);
+      if (m) silenceAmbient();
     }
     function toggle() { setMuted(!muted); if (!muted) ensure(); }
     function init() { document.body.classList.toggle("muted", muted); }
 
-    return { playOpen, toggle, init };
+
+    return { playOpen, toggle, init, activity };
   })();
 
   Sound.init();
   $("soundToggle").addEventListener("click", Sound.toggle);
+  // 全站:鼠标移动/点击/滚动才响起轻音乐,页面静止则无声
+  ["pointermove", "pointerdown", "wheel", "touchstart", "keydown"].forEach((ev) =>
+    window.addEventListener(ev, Sound.activity, { passive: true })
+  );
 
   /* =======================================================
      沙画舞台:开屏「咋啦」凝聚 → 轻触后小人走入场景 → 走到终点
@@ -617,18 +673,19 @@
     $("feelingText").value = "";
     selectedPlace = "";
     document.querySelectorAll("#placeChips .chip").forEach((c) => c.classList.remove("active"));
+    window.scrollTo(0, 0);
     document.body.classList.remove("crisis");
     setView("intro");   // 先切回首页,让画布重新可见(否则 clientWidth=0 会导致重建失败)
     Stage.reset(origin);
   }
   /* ---------- 情绪地图 ---------- */
-  $("toMapBtn").addEventListener("click", () => { renderMap(); setView("map"); });
+  $("toMapBtn").addEventListener("click", () => { renderMap(); setView("map"); window.scrollTo(0, 0); });
   $("backHomeBtn").addEventListener("click", resetToHome);
   // 左上角返回键:输入页→首页;结果/地图页→输入页
   $("backBtn").addEventListener("click", () => {
     const v = document.body.getAttribute("data-view");
     if (v === "input") resetToHome();
-    else if (v === "result" || v === "map") setView("input");
+    else if (v === "result" || v === "map") { setView("input"); window.scrollTo(0, 0); }
   });
 
   function loadMap() {
