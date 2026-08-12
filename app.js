@@ -96,10 +96,8 @@
       ambient = { out };
       return ambient;
     }
-    // 有鼠标移动/点击时:柔和拉起音量;静止约 0.5s 后:渐隐至无声
-    function activity() {
-      if (muted) return;
-      const ac = ensure(); if (!ac) return;
+    // 拉起音量,并安排静止后渐隐(仅在 ctx 已运行时执行,避免挂起期的时钟错乱)
+    function rampUp(ac) {
       const amb = ensureAmbient(); if (!amb) return;
       const now = ac.currentTime;
       amb.out.gain.cancelScheduledValues(now);
@@ -110,6 +108,18 @@
         amb.out.gain.cancelScheduledValues(t);
         amb.out.gain.setTargetAtTime(0.0001, t, 0.6);
       }, 480);
+    }
+    // 有鼠标移动/点击/滚动时:柔和拉起音量;静止约 0.5s 后:渐隐至无声。
+    // 浏览器自动播放策略要求首个"真实手势"(点击/触摸/按键)才能解锁音频,
+    // 因此挂起时先 resume,待真正 running 后再起音。
+    function activity() {
+      if (muted) return;
+      const ac = ensure(); if (!ac) return;
+      if (ac.state !== "running") {
+        if (ac.resume) ac.resume().then(() => { if (!muted) rampUp(ac); }).catch(() => {});
+        return;
+      }
+      rampUp(ac);
     }
     function silenceAmbient() {
       clearTimeout(idleTimer);
