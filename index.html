@@ -165,6 +165,15 @@
       </div>
     </section>
 
+    <!-- 解锁(地图上了锁时) -->
+    <section class="view view-lock" aria-label="解锁">
+      <p class="lock-title">这里，只给你</p>
+      <p class="lock-sub" id="lockSub">输入你的密码</p>
+      <input class="lock-input" id="lockInput" type="password" inputmode="numeric" autocomplete="off" maxlength="4" aria-label="密码" />
+      <button class="primary" id="lockEnterBtn">进入</button>
+      <button class="ghost" id="lockBackBtn">回到首页</button>
+    </section>
+
     <!-- 情绪地图 -->
     <section class="view view-map" aria-label="情绪地图">
       <p class="lead">你的情绪地图</p>
@@ -176,6 +185,15 @@
         <div class="heat-legend"><span>淡</span><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i><i class="l5"></i><span>浓</span></div>
       </div>
       <div class="map-list" id="mapList"></div>
+
+      <div class="privacy-panel">
+        <button class="ghost priv-toggle" id="privToggle" type="button">隐私与安全</button>
+        <div class="priv-body" id="privBody" hidden>
+          <div class="priv-row" id="lockRow"></div>
+          <button class="ghost priv-danger" id="clearAllBtn" type="button">清空所有记录</button>
+        </div>
+      </div>
+
       <button class="ghost" id="backHomeBtn">回到首页</button>
     </section>
 

@@ -100,6 +100,7 @@ body.muted .sound-toggle .snd-off { display: inline; color: var(--paper-dim); }
 body[data-view="input"] .back-btn,
 body[data-view="result"] .back-btn,
 body[data-view="echo"] .back-btn,
+body[data-view="lock"] .back-btn,
 body[data-view="map"] .back-btn { opacity: 1; visibility: visible; }
 
 /* ---------- 舞台与视图切换 ---------- */
@@ -121,6 +122,7 @@ body[data-view="input"]   .view-input,
 body[data-view="loading"] .view-loading,
 body[data-view="result"]  .view-result,
 body[data-view="echo"]    .view-echo,
+body[data-view="lock"]    .view-lock,
 body[data-view="map"]     .view-map {
   opacity: 1; visibility: visible; transform: translateY(0);
 }
@@ -128,6 +130,7 @@ body[data-view="map"]     .view-map {
 body[data-view="input"]  .view-input,
 body[data-view="result"] .view-result,
 body[data-view="echo"]   .view-echo,
+body[data-view="lock"]   .view-lock,
 body[data-view="map"]    .view-map { pointer-events: auto; }
 
 /* 情绪地图 / 回响:整个界面级别的隐藏滚动条上下滚动(整页一起滚)。
@@ -496,6 +499,38 @@ body.crisis .drawers, body.crisis #keepBtn, body.crisis #sealRow { display: none
 .eb-thread-line span { color: var(--paper-dim); font-size: 11px; margin-right: 8px; }
 .eb-reply-card { min-height: auto; padding: 16px 20px; }
 .eb-reply-card textarea { font-size: 16px; }
+
+/* =========================================================
+   解锁 / 隐私护栏
+   ========================================================= */
+.view-lock { gap: 20px; text-align: center; }
+.lock-title { font-family: var(--serif); font-size: 24px; letter-spacing: 3px; color: var(--paper); }
+.lock-sub { font-size: 13px; color: var(--paper-dim); letter-spacing: 1px; }
+.lock-sub.err { color: var(--clay); }
+.lock-input {
+  width: 180px; text-align: center; letter-spacing: 14px; font-size: 24px;
+  padding: 12px 0 12px 14px; color: var(--paper); font-family: var(--sans);
+  background: var(--glass-bg); border: 1px solid var(--glass-brd); border-radius: 14px;
+  outline: none; transition: border-color 0.3s var(--ease);
+}
+.lock-input:focus { border-color: rgba(124,154,107,0.55); }
+.view-lock .primary { width: 180px; }
+
+.privacy-panel { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 14px; margin-top: 4px; }
+.priv-toggle { font-size: 12px; letter-spacing: 1px; opacity: .75; }
+.priv-body { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.priv-body[hidden] { display: none; }
+.priv-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center; }
+.priv-status { font-size: 13px; color: var(--sage); }
+.pin-set-input {
+  width: 150px; text-align: center; letter-spacing: 8px; font-size: 16px;
+  padding: 8px 0 8px 8px; color: var(--paper); font-family: var(--sans);
+  background: var(--glass-bg); border: 1px solid var(--glass-brd); border-radius: 12px; outline: none;
+}
+.pin-set-input:focus { border-color: rgba(124,154,107,0.55); }
+.priv-danger { font-size: 12px; color: var(--paper-dim); opacity: .7; }
+.priv-danger:hover { color: var(--clay); opacity: 1; }
+.priv-danger.confirm { color: var(--clay); opacity: 1; }
 
 /* =========================================================
    响应式 & 可访问性

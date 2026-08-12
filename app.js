@@ -12,6 +12,7 @@
   const MUTE_KEY = "zala_muted";
   const ECHO_KEY = "zala_echo_v1";          // { lastShownDay: "YYYY-MM-DD" } 每日只自动回响一次
   const TASK_KEY = "zala_tasks_v1";         // 收下的「一件小事」
+  const LOCK_KEY = "zala_lock_v1";          // { hash } 地图访问密码(仅防随手翻看)
   const DAY = 24 * 3600 * 1000;
   const HOUR = 3600 * 1000;
   const ECHO_MIN_AGE = 7 * DAY;             // 记录满 7 天才有资格回响(需要时间距离)
@@ -305,7 +306,8 @@
       if (revealed) return;
       revealed = true;
       setTimeout(() => {
-        const cand = pickEchoCandidate();
+        // 地图上了锁又没解锁时,不自动浮现回响(回响会露出过去的私密内容)
+        const cand = (hasLock() && !mapUnlocked) ? null : pickEchoCandidate();
         if (cand) { openEcho(cand, "enter"); }
         else { setView("input"); setTimeout(() => $("feelingText").focus(), 300); maybePromptTask(); }
       }, 1300);
@@ -747,13 +749,14 @@
     Stage.reset(origin);
   }
   /* ---------- 情绪地图 ---------- */
-  $("toMapBtn").addEventListener("click", () => { renderMap(); setView("map"); window.scrollTo(0, 0); });
+  $("toMapBtn").addEventListener("click", goMap);
   $("backHomeBtn").addEventListener("click", resetToHome);
   // 左上角返回键:输入页→首页;结果/地图页→输入页
   $("backBtn").addEventListener("click", () => {
     const v = document.body.getAttribute("data-view");
     if (v === "input") resetToHome();
     else if (v === "echo") closeEcho(false);
+    else if (v === "lock") resetToHome();
     else if (v === "result" || v === "map") { setView("input"); window.scrollTo(0, 0); maybePromptTask(); }
   });
 
@@ -1086,6 +1089,130 @@
     updateTask(recallTaskId, { status: "dropped" });
     recallTaskId = null;
     $("taskRecall").hidden = true;
+  });
+
+  /* =======================================================
+     隐私护栏 · 给情绪地图上一把锁 + 一键彻底清空
+     说明:这是"防随手翻看"的轻量锁,不是强加密(localStorage 本可被开发者工具查看)。
+     ======================================================= */
+  let mapUnlocked = false;  // 本次会话内解锁一次即可,刷新后重新上锁
+
+  function getLockHash() {
+    try { return (JSON.parse(localStorage.getItem(LOCK_KEY)) || {}).hash || ""; }
+    catch { return ""; }
+  }
+  function hasLock() { return !!getLockHash(); }
+
+  async function hashPin(pin) {
+    const s = "zala:" + pin;
+    try {
+      if (window.crypto && crypto.subtle) {
+        const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+        return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+      }
+    } catch { /* 落到兜底 */ }
+    let h = 5381;
+    for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+    return "djb2:" + h.toString(16);
+  }
+
+  function openMap() {
+    renderMap();
+    renderPrivacyPanel();
+    setView("map");
+    window.scrollTo(0, 0);
+  }
+  function goMap() {
+    if (hasLock() && !mapUnlocked) showLock();
+    else openMap();
+  }
+
+  function showLock() {
+    $("lockInput").value = "";
+    $("lockSub").textContent = "输入你的密码";
+    $("lockSub").classList.remove("err");
+    setView("lock");
+    window.scrollTo(0, 0);
+    setTimeout(() => $("lockInput").focus(), 300);
+  }
+  async function tryUnlock() {
+    const pin = ($("lockInput").value || "").replace(/\D/g, "");
+    if (pin.length < 4) return;
+    const h = await hashPin(pin);
+    if (h === getLockHash()) { mapUnlocked = true; openMap(); }
+    else {
+      $("lockSub").textContent = "不对，再试试";
+      $("lockSub").classList.add("err");
+      $("lockInput").value = "";
+      $("lockInput").focus();
+    }
+  }
+  $("lockInput").addEventListener("input", () => {
+    $("lockInput").value = $("lockInput").value.replace(/\D/g, "").slice(0, 4);
+    if ($("lockInput").value.length >= 4) tryUnlock();
+  });
+  $("lockEnterBtn").addEventListener("click", tryUnlock);
+  $("lockBackBtn").addEventListener("click", resetToHome);
+
+  // 地图里的「隐私与安全」面板
+  $("privToggle").addEventListener("click", () => {
+    $("privBody").hidden = !$("privBody").hidden;
+  });
+
+  function renderPrivacyPanel() {
+    const row = $("lockRow");
+    row.innerHTML = "";
+    if (hasLock()) {
+      const s = document.createElement("span");
+      s.className = "priv-status"; s.textContent = "✦ 这里已上锁";
+      const b = document.createElement("button");
+      b.className = "ghost"; b.textContent = "取消密码";
+      b.addEventListener("click", () => {
+        localStorage.removeItem(LOCK_KEY); mapUnlocked = false; renderPrivacyPanel();
+      });
+      row.append(s, b);
+    } else {
+      const b = document.createElement("button");
+      b.className = "ghost"; b.textContent = "给这里上一把锁";
+      b.addEventListener("click", showSetPin);
+      row.appendChild(b);
+    }
+  }
+
+  function showSetPin() {
+    const row = $("lockRow");
+    row.innerHTML = "";
+    const inp = document.createElement("input");
+    inp.className = "pin-set-input"; inp.type = "password"; inp.inputMode = "numeric";
+    inp.maxLength = 4; inp.placeholder = "设 4 位数字密码"; inp.autocomplete = "off";
+    inp.addEventListener("input", () => { inp.value = inp.value.replace(/\D/g, "").slice(0, 4); });
+    const b = document.createElement("button");
+    b.className = "ghost"; b.textContent = "设定";
+    b.addEventListener("click", async () => {
+      const v = (inp.value || "").replace(/\D/g, "").slice(0, 4);
+      if (v.length < 4) { inp.focus(); return; }
+      const h = await hashPin(v);
+      localStorage.setItem(LOCK_KEY, JSON.stringify({ hash: h }));
+      mapUnlocked = true; renderPrivacyPanel();
+    });
+    row.append(inp, b);
+    setTimeout(() => inp.focus(), 30);
+  }
+
+  // 一键彻底清空:二次点击确认,不用系统弹窗
+  $("clearAllBtn").addEventListener("click", () => {
+    const btn = $("clearAllBtn");
+    if (!btn.classList.contains("confirm")) {
+      btn.classList.add("confirm");
+      btn.textContent = "确定清空？不可恢复 · 再点一次";
+      setTimeout(() => { btn.classList.remove("confirm"); btn.textContent = "清空所有记录"; }, 4000);
+      return;
+    }
+    localStorage.removeItem(MAP_KEY);
+    localStorage.removeItem(TASK_KEY);
+    localStorage.removeItem(ECHO_KEY);
+    btn.classList.remove("confirm"); btn.textContent = "清空所有记录";
+    renderMap();
   });
 
   /* ---------- 降级 mock(本地直接打开、或后端未配置时) ---------- */
