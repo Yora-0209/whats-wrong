@@ -99,6 +99,7 @@ body.muted .sound-toggle .snd-off { display: inline; color: var(--paper-dim); }
 .back-btn:hover { transform: scale(1.08); }
 body[data-view="input"] .back-btn,
 body[data-view="result"] .back-btn,
+body[data-view="echo"] .back-btn,
 body[data-view="map"] .back-btn { opacity: 1; visibility: visible; }
 
 /* ---------- 舞台与视图切换 ---------- */
@@ -119,38 +120,44 @@ body[data-view="intro"]   .view-intro,
 body[data-view="input"]   .view-input,
 body[data-view="loading"] .view-loading,
 body[data-view="result"]  .view-result,
+body[data-view="echo"]    .view-echo,
 body[data-view="map"]     .view-map {
   opacity: 1; visibility: visible; transform: translateY(0);
 }
 /* 仅这些页面需要点击 DOM;开屏交给画布 */
 body[data-view="input"]  .view-input,
 body[data-view="result"] .view-result,
+body[data-view="echo"]   .view-echo,
 body[data-view="map"]    .view-map { pointer-events: auto; }
 
-/* 情绪地图:整个界面级别的隐藏滚动条上下滚动(不在视图内部滚,整页一起滚)。
+/* 情绪地图 / 回响:整个界面级别的隐藏滚动条上下滚动(整页一起滚)。
    固定的沙画/暖光背景留在原地,内容整体在其上滚动。 */
-body[data-view="map"] {
+body[data-view="map"],
+body[data-view="echo"] {
   overflow-y: auto;
   -ms-overflow-style: none;   /* IE/Edge */
   scrollbar-width: none;       /* Firefox */
 }
-body[data-view="map"]::-webkit-scrollbar { width: 0; height: 0; display: none; }
-body[data-view="map"] .stage {
+body[data-view="map"]::-webkit-scrollbar,
+body[data-view="echo"]::-webkit-scrollbar { width: 0; height: 0; display: none; }
+body[data-view="map"] .stage,
+body[data-view="echo"] .stage {
   height: auto; min-height: 100%;
   display: block; padding: 0;
 }
-body[data-view="map"] .view-map {
+body[data-view="map"] .view-map,
+body[data-view="echo"] .view-echo {
   position: static;
   width: min(560px, 92vw);
   margin: 0 auto;
 }
-.view-map {
+.view-map, .view-echo {
   display: block;
   padding: 64px 0 56px;
   text-align: center;
 }
 /* block 布局下用外边距还原原来的 gap:20px,按钮居中 */
-.view-map > * + * { margin-top: 20px; }
+.view-map > * + *, .view-echo > * + * { margin-top: 20px; }
 .view-map .ghost { display: inline-block; }
 
 
@@ -393,23 +400,64 @@ body.dissolving .result-actions { animation: dissolveFade 0.4s var(--ease) forwa
 .cal-d[data-i="4"] { background: rgba(95,127,84,0.9); }
 .cal-d[data-i="5"] { background: linear-gradient(160deg, #5f7f54, #cf9b4b); box-shadow: 0 0 8px rgba(207,155,75,0.4); }
 
-.map-list { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+.map-list { width: 100%; display: flex; flex-direction: column; gap: 10px; text-align: left; }
 .map-entry {
-  display: flex; align-items: center; gap: 14px;
+  display: flex; flex-direction: column; gap: 8px;
   background: var(--glass-bg); border: 1px solid var(--glass-brd); border-radius: 12px; padding: 12px 16px;
+  transition: border-color 0.3s var(--ease), transform 0.2s var(--ease);
 }
+.map-row-main { display: flex; align-items: center; gap: 14px; }
+.map-entry.tappable { cursor: pointer; }
+.map-entry.tappable:hover { border-color: rgba(124,154,107,0.5); transform: translateY(-1px); }
+.map-entry.has-echo { border-color: rgba(207,155,75,0.34); }
 .map-when { font-size: 12px; color: var(--paper-dim); min-width: 92px; }
 .map-weather { font-family: var(--serif); color: var(--amber-soft); font-size: 15px; flex: 1; }
 .map-place { font-size: 12px; color: var(--paper-dim); }
+.map-echo-note { font-size: 12.5px; color: var(--amber-soft); opacity: .85; padding-left: 2px; }
+.map-entry.sealed { color: var(--paper-dim); opacity: .82; }
+.map-entry.sealed .seal-ico { color: var(--amber-soft); margin-right: 8px; }
+.map-entry.sealed .seal-text { font-size: 13px; }
 .map-empty { color: var(--paper-dim); font-size: 14px; padding: 30px 0; text-align: center; }
 
 /* 危机态 */
-body.crisis .drawers, body.crisis #keepBtn { display: none; }
+body.crisis .drawers, body.crisis #keepBtn, body.crisis #sealRow { display: none; }
 .crisis-help {
   width: 100%; text-align: center; border: 1px solid rgba(246,221,176,0.4); border-radius: 14px;
   padding: 18px; color: var(--amber-soft); font-size: 15px; line-height: 1.9;
 }
 .crisis-help strong { color: var(--amber); font-size: 18px; letter-spacing: 1px; }
+
+/* =========================================================
+   封存给未来
+   ========================================================= */
+.seal-row { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 2px; }
+.seal-toggle { font-size: 13px; }
+.seal-toggle.open { color: var(--paper); }
+.seal-opts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+
+/* =========================================================
+   回响 · 来自过去的自己
+   ========================================================= */
+.eb-eyebrow { font-family: var(--serif); font-size: 13px; letter-spacing: 2px; color: var(--amber-soft); }
+.card-echoback {
+  position: relative; width: 100%; padding: 26px 24px; text-align: center;
+  display: flex; flex-direction: column; gap: 14px; align-items: center;
+}
+.eb-when { font-size: 12px; letter-spacing: 1px; color: var(--paper-dim); }
+.eb-origin { font-family: var(--serif); font-size: 18px; line-height: 1.9; color: var(--paper); }
+.eb-caught { font-size: 13px; color: var(--paper-dim); line-height: 1.8; }
+.eb-line-wrap { width: 100%; margin-top: 4px; padding-top: 16px; border-top: 1px solid rgba(207,155,75,0.22); }
+.eb-line { font-family: var(--serif); font-size: 19px; line-height: 1.9; color: var(--amber-soft); }
+.eb-crisis { font-size: 12.5px; color: var(--amber-soft); line-height: 1.8; margin-top: 6px; }
+.eb-crisis[hidden] { display: none; }
+.eb-crisis strong { color: var(--amber); letter-spacing: 1px; }
+.eb-thread { width: 100%; text-align: left; display: flex; flex-direction: column; gap: 8px; }
+.eb-thread[hidden] { display: none; }
+.eb-thread-title { font-size: 12px; color: var(--paper-dim); letter-spacing: 1px; }
+.eb-thread-line { font-size: 13.5px; color: var(--paper); line-height: 1.7; }
+.eb-thread-line span { color: var(--paper-dim); font-size: 11px; margin-right: 8px; }
+.eb-reply-card { min-height: auto; padding: 16px 20px; }
+.eb-reply-card textarea { font-size: 16px; }
 
 /* =========================================================
    响应式 & 可访问性

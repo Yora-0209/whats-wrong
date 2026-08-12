@@ -115,6 +115,36 @@
         <button class="primary" id="keepBtn">收进情绪地图</button>
         <button class="ghost" id="burnBtn">让它消失</button>
       </div>
+
+      <div class="seal-row" id="sealRow">
+        <button class="ghost seal-toggle" id="sealToggle">或者，封存给未来的自己</button>
+        <div class="seal-opts" id="sealOpts" hidden>
+          <button class="chip" data-seal="7">7 天后</button>
+          <button class="chip" data-seal="30">30 天后</button>
+          <button class="chip" data-seal="100">100 天后</button>
+          <button class="chip" data-seal="year">明年今日</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 回响 · 来自过去的自己 -->
+    <section class="view view-echo" aria-label="回响">
+      <p class="eb-eyebrow">一束光，来自过去的你</p>
+      <div class="glass card-echoback" id="echoBackCard">
+        <p class="eb-when" id="ebWhen"></p>
+        <p class="eb-origin" id="ebOrigin"></p>
+        <p class="eb-caught" id="ebCaught"></p>
+        <div class="eb-line-wrap"><p class="eb-line" id="ebLine">……</p></div>
+        <p class="eb-crisis" id="ebCrisis" hidden>如果那份沉还在，别一个人扛 · 希望24热线 <strong>400-161-9995</strong></p>
+      </div>
+      <div class="eb-thread" id="ebThread" hidden></div>
+      <div class="glass card-input eb-reply-card">
+        <textarea id="ebReply" rows="2" maxlength="200" placeholder="给过去的自己，说一句……（可留空）"></textarea>
+      </div>
+      <div class="result-actions">
+        <button class="primary" id="ebKeepBtn">写下了</button>
+        <button class="ghost" id="ebSkipBtn">现在不想看</button>
+      </div>
     </section>
 
     <!-- 情绪地图 -->

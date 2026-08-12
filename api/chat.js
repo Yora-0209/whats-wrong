@@ -58,6 +58,25 @@ const SYSTEM_PROMPT = `# 你是谁
 }
 若 safety 为 "crisis":drawers 各字段留空字符串,只在 echo 里接住并引导热线。`;
 
+// 回响(时间胶囊):把过去收进来的一段情绪,在合适的时机温柔地递还给此刻的他。
+const ECHO_PROMPT = `# 你是谁
+你是「咋啦」,那个深夜还亮着灯、话不多但很稳的老朋友。
+过去某天,有人把一段情绪放进你这里。现在他又回来了,你想让他感到"被时间温柔地看见"。
+
+# 任务
+不是重提伤口,不是复述痛苦,不是分析。只递给他一两句温柔的回响。
+- 谈"变化、走过来、此刻的自己",轻轻邀请他回头看看那时的自己,不追问细节。
+- 像朋友,不鸡汤、不说教、不打鸡血。≤30字。
+- 若当时情绪很重(强度高),就更轻更稳,可在末尾轻轻带一句"如果还在里面,别一个人扛"。
+- 不许诺、不评判。
+
+# 输入
+过去他写下的情绪、当时你接住的话、隔了多少天、情绪名与强度。
+
+# 输出(严格 JSON,不要任何多余文字、不要 markdown)
+{"line":"给此刻的他的一句回响,≤30字"}`;
+
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.status(405).json({ error: "method not allowed" });
@@ -77,12 +96,23 @@ export default async function handler(req, res) {
       res.status(400).json({ error: "empty text" });
       return;
     }
-    const context = [
-      body.place ? `地点:${body.place}` : "",
-      body.time ? `时间:${body.time}` : "",
-    ].filter(Boolean).join(" / ");
 
-    const userMsg = context ? `${text}\n\n(${context})` : text;
+    const isEcho = body.mode === "echo";
+    const system = isEcho ? ECHO_PROMPT : SYSTEM_PROMPT;
+    let userMsg;
+    if (isEcho) {
+      const days = Number(body.days) || 0;
+      const caught = String(body.echo || "").slice(0, 300);
+      const emotion = String(body.emotion || "").slice(0, 60);
+      const intensity = Number(body.intensity) || 0;
+      userMsg = `${days}天前,他写下:${text}\n当时你接住他:${caught}\n(情绪:${emotion} 强度:${intensity}/5)`;
+    } else {
+      const context = [
+        body.place ? `地点:${body.place}` : "",
+        body.time ? `时间:${body.time}` : "",
+      ].filter(Boolean).join(" / ");
+      userMsg = context ? `${text}\n\n(${context})` : text;
+    }
 
     const upstream = await fetch(`${LLM_BASE_URL.replace(/\/$/, "")}/chat/completions`, {
       method: "POST",
@@ -95,7 +125,7 @@ export default async function handler(req, res) {
         temperature: 0.85,
         response_format: { type: "json_object" },
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: system },
           { role: "user", content: userMsg },
         ],
       }),
@@ -116,7 +146,7 @@ export default async function handler(req, res) {
     } catch {
       // 模型偶尔裹了多余文字,兜底抽取花括号
       const m = content.match(/\{[\s\S]*\}/);
-      parsed = m ? JSON.parse(m[0]) : { safety: "ok", echo: "我在。", drawers: {} };
+      parsed = m ? JSON.parse(m[0]) : (isEcho ? { line: "" } : { safety: "ok", echo: "我在。", drawers: {} });
     }
 
     res.status(200).json(parsed);

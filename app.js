@@ -10,6 +10,11 @@
 
   const MAP_KEY = "zala_map_v1";
   const MUTE_KEY = "zala_muted";
+  const ECHO_KEY = "zala_echo_v1";          // { lastShownDay: "YYYY-MM-DD" } 每日只自动回响一次
+  const DAY = 24 * 3600 * 1000;
+  const ECHO_MIN_AGE = 7 * DAY;             // 记录满 7 天才有资格回响(需要时间距离)
+  const ECHO_REPEAT_GAP = 14 * DAY;         // 同一条回响后至少隔 14 天才会再次浮现
+  const MILESTONES = [7, 30, 100, 365];     // 优先在这些天数节点回响
   let selectedPlace = "";
 
   /* =======================================================
@@ -295,7 +300,11 @@
     function arrive() {
       if (revealed) return;
       revealed = true;
-      setTimeout(() => { setView("input"); setTimeout(() => $("feelingText").focus(), 300); }, 1300);
+      setTimeout(() => {
+        const cand = pickEchoCandidate();
+        if (cand) { openEcho(cand, "enter"); }
+        else { setView("input"); setTimeout(() => $("feelingText").focus(), 300); }
+      }, 1300);
     }
 
     // 光之魂:一小簇会闪的光斑,飘向「咋啦」;点击可立即抵达
@@ -607,6 +616,8 @@
   function renderResult(d, sourceText) {
     lastResult = { d, sourceText, place: selectedPlace, at: Date.now() };
     document.body.classList.toggle("crisis", d.safety === "crisis");
+    $("sealOpts").hidden = true;
+    $("sealToggle").classList.remove("open");
 
     $("echoText").textContent = d.echo || "我在。";
     $("emotionText").textContent = d.emotion ? "— " + d.emotion : "";
@@ -651,18 +662,47 @@
   }
 
   /* ---------- 收进地图 / 焚毁 ---------- */
-  $("keepBtn").addEventListener("click", () => {
+  function saveMap(map) {
+    localStorage.setItem(MAP_KEY, JSON.stringify(map.slice(0, 500)));
+  }
+
+  // 收进地图。openAt 非空 = 「封存给未来」,到期才会浮现回响。
+  // 注:text 仅保存在本地(localStorage),用于日后回响;「让它消失」焚毁的记录永不保存。
+  function keepEntry(openAt) {
     if (!lastResult) return;
     const map = loadMap();
     map.unshift({
+      id: lastResult.at,
       at: lastResult.at,
+      text: (lastResult.sourceText || "").slice(0, 600),
+      echo: lastResult.d.echo || "",
       weather: lastResult.d.weather || "",
       emotion: lastResult.d.emotion || "",
       place: lastResult.place || "",
       intensity: lastResult.d.intensity || null,
+      openAt: openAt || null,
+      echoedAt: null,
+      responses: [],
     });
-    localStorage.setItem(MAP_KEY, JSON.stringify(map.slice(0, 500)));
+    saveMap(map);
     resetToHome();
+  }
+
+  $("keepBtn").addEventListener("click", () => keepEntry(null));
+
+  // 封存给未来的自己:展开档位 → 选一个 → 记 openAt
+  $("sealToggle").addEventListener("click", () => {
+    $("sealOpts").hidden = !$("sealOpts").hidden;
+    $("sealToggle").classList.toggle("open", !$("sealOpts").hidden);
+  });
+  $("sealOpts").addEventListener("click", (e) => {
+    const btn = e.target.closest(".chip");
+    if (!btn) return;
+    const key = btn.dataset.seal;
+    let openAt;
+    if (key === "year") { const d = new Date(); d.setFullYear(d.getFullYear() + 1); openAt = d.getTime(); }
+    else openAt = Date.now() + Number(key) * DAY;
+    keepEntry(openAt);
   });
 
   /* ---------- 「让它消失」:接住卡就地化作沙,缓缓聚回首页「咋啦」 ---------- */
@@ -695,6 +735,7 @@
   $("backBtn").addEventListener("click", () => {
     const v = document.body.getAttribute("data-view");
     if (v === "input") resetToHome();
+    else if (v === "echo") closeEcho(false);
     else if (v === "result" || v === "map") { setView("input"); window.scrollTo(0, 0); }
   });
 
@@ -775,16 +816,42 @@
       list.innerHTML = '<p class="map-empty">还空着。<br/>下次想留住某个瞬间，就把它收进来。</p>';
       return;
     }
+    const now = Date.now();
     map.forEach((e) => {
+      // 封存中:不泄露内容,只显示一枚待亮起的胶囊
+      if (e.openAt && e.openAt > now) {
+        const left = Math.max(1, Math.ceil((e.openAt - now) / DAY));
+        const cap = document.createElement("div");
+        cap.className = "map-entry sealed";
+        cap.innerHTML = `<div class="map-row-main"><span class="seal-ico">✦</span>` +
+          `<span class="seal-text">一枚封存的胶囊 · 还有 ${left} 天亮起</span></div>`;
+        list.appendChild(cap);
+        return;
+      }
+      const hasEcho = e.responses && e.responses.length;
       const row = document.createElement("div");
-      row.className = "map-entry";
+      row.className = "map-entry" + (e.text ? " tappable" : "") + (hasEcho ? " has-echo" : "");
+      if (e.id != null) row.dataset.id = String(e.id);
+      const note = hasEcho
+        ? `<div class="map-echo-note">回响 · ${escapeHtml(e.responses[e.responses.length - 1].text)}</div>` : "";
       row.innerHTML =
-        `<span class="map-when">${fmtDate(e.at)}</span>` +
-        `<span class="map-weather">${escapeHtml(e.weather || e.emotion || "—")}</span>` +
-        `<span class="map-place">${escapeHtml(e.place || "")}</span>`;
+        `<div class="map-row-main">` +
+          `<span class="map-when">${fmtDate(e.at)}</span>` +
+          `<span class="map-weather">${escapeHtml(e.weather || e.emotion || "—")}</span>` +
+          `<span class="map-place">${escapeHtml(e.place || "")}</span>` +
+        `</div>` + note;
       list.appendChild(row);
     });
   }
+
+  // 点地图里有原文的记录 → 重新打开它的回响
+  $("mapList").addEventListener("click", (e) => {
+    const row = e.target.closest(".map-entry.tappable");
+    if (!row) return;
+    const id = Number(row.dataset.id);
+    const entry = loadMap().find((x) => x.id === id);
+    if (entry) openEcho(entry, "map");
+  });
 
   function dayKey(d) {
     const p = (n) => String(n).padStart(2, "0");
@@ -799,6 +866,122 @@
     return String(s).replace(/[&<>"']/g, (c) =>
       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   }
+
+  /* =======================================================
+     回响 · 时间胶囊:把过去收进来的情绪,在合适的时机温柔地递还
+     ======================================================= */
+  let echoContext = null;  // { id, from: "enter" | "map" }
+
+  function loadEchoState() {
+    try { return JSON.parse(localStorage.getItem(ECHO_KEY)) || {}; }
+    catch { return {}; }
+  }
+  function echoShownToday() { return loadEchoState().lastShownDay === dayKey(new Date()); }
+  function markEchoShownToday() {
+    localStorage.setItem(ECHO_KEY, JSON.stringify({ lastShownDay: dayKey(new Date()) }));
+  }
+
+  // 选一条可回响的记录:仅限本地保存过原文、未焚毁的;
+  // 封存到期的最优先,其次挑最接近节点(7/30/100/365天)的旧记录。每天最多一次。
+  function pickEchoCandidate() {
+    if (echoShownToday()) return null;
+    const now = Date.now();
+    const eligible = loadMap().filter((e) => {
+      if (!e || !e.text) return false;                                    // 老数据/无原文
+      if (e.openAt && e.openAt > now) return false;                       // 还在封存期
+      if (e.echoedAt && now - e.echoedAt < ECHO_REPEAT_GAP) return false; // 最近刚回响过
+      const sealedDue = e.openAt && e.openAt <= now && !e.echoedAt;
+      return sealedDue || (now - e.at >= ECHO_MIN_AGE);
+    });
+    if (!eligible.length) return null;
+    const score = (e) => {
+      let s = (e.openAt && e.openAt <= now) ? 1000 : 0;
+      const days = (now - e.at) / DAY;
+      s += Math.max(0, 40 - Math.min.apply(null, MILESTONES.map((m) => Math.abs(days - m))));
+      return s;
+    };
+    eligible.sort((a, b) => score(b) - score(a));
+    return eligible[0];
+  }
+
+  function mockEchoLine(days) {
+    if (days >= 300) return "快一年了。那时的你,大概想不到能走到这里。";
+    if (days >= 80) return "那阵子的沉,现在再看,是不是轻了一点点。";
+    if (days >= 25) return "一个月了。你还在往前走,这就够了。";
+    return "过了些天了。回头看看那时的自己,别太苛刻。";
+  }
+
+  async function fetchEchoLine(entry) {
+    const days = Math.max(1, Math.round((Date.now() - entry.at) / DAY));
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "echo", text: entry.text || "", echo: entry.echo || "",
+          emotion: entry.emotion || "", intensity: entry.intensity || null, days,
+        }),
+      });
+      if (!res.ok) throw new Error("bad");
+      const d = await res.json();
+      return (d && d.line) ? d.line : mockEchoLine(days);
+    } catch { return mockEchoLine(days); }
+  }
+
+  function elapsedText(at) {
+    const days = Math.max(1, Math.round((Date.now() - at) / DAY));
+    if (days >= 365) return `${Math.floor(days / 365)} 年前`;
+    if (days >= 30) return `${Math.round(days / 30)} 个月前`;
+    return `${days} 天前`;
+  }
+
+  function renderEchoThread(entry) {
+    const box = $("ebThread");
+    const resp = entry.responses || [];
+    if (!resp.length) { box.hidden = true; box.innerHTML = ""; return; }
+    box.hidden = false;
+    box.innerHTML = '<div class="eb-thread-title">你曾回应过它</div>' +
+      resp.map((r) => `<div class="eb-thread-line"><span>${fmtDate(r.at)}</span>${escapeHtml(r.text)}</div>`).join("");
+  }
+
+  async function openEcho(entry, from) {
+    echoContext = { id: entry.id, from };
+    if (from === "enter") markEchoShownToday();
+
+    $("ebWhen").textContent = `${elapsedText(entry.at)} · ${fmtDate(entry.at)}`;
+    $("ebOrigin").textContent = entry.text ? `“${entry.text}”` : "";
+    $("ebCaught").textContent = entry.echo ? `那天我接住你:${entry.echo}` : "";
+    $("ebReply").value = "";
+    $("ebLine").textContent = "……";
+    $("ebCrisis").hidden = (Number(entry.intensity) || 0) < 5;  // 高强度旧情绪才轻轻附上热线
+    renderEchoThread(entry);
+
+    setView("echo");
+    window.scrollTo(0, 0);
+    const line = await fetchEchoLine(entry);
+    if (echoContext && echoContext.id === entry.id) $("ebLine").textContent = line;  // 若已离开则不覆盖
+  }
+
+  function closeEcho(saveReply) {
+    const map = loadMap();
+    const idx = map.findIndex((e) => e.id === (echoContext && echoContext.id));
+    if (idx >= 0) {
+      map[idx].echoedAt = Date.now();  // 记录已回响,顺延不再马上打扰
+      const reply = $("ebReply").value.trim();
+      if (saveReply && reply) {
+        map[idx].responses = map[idx].responses || [];
+        map[idx].responses.push({ at: Date.now(), text: reply.slice(0, 200) });
+      }
+      saveMap(map);
+    }
+    const from = echoContext && echoContext.from;
+    echoContext = null;
+    if (from === "map") { renderMap(); setView("map"); window.scrollTo(0, 0); }
+    else { setView("input"); setTimeout(() => $("feelingText").focus(), 300); }
+  }
+
+  $("ebKeepBtn").addEventListener("click", () => closeEcho(true));
+  $("ebSkipBtn").addEventListener("click", () => closeEcho(false));
 
   /* ---------- 降级 mock(本地直接打开、或后端未配置时) ---------- */
   function mockResponse(text) {
