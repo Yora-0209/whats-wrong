@@ -308,6 +308,9 @@ textarea::placeholder { color: var(--paper-dim); }
   color: #fff; border-color: transparent;
   background: linear-gradient(120deg, var(--violet), var(--magenta));
 }
+/* 极速投放:说不出就点一下的心情 chips */
+.quick-moods { margin-top: -8px; }
+.chip.mood:hover { border-color: rgba(207,155,75,0.5); color: var(--amber-soft); }
 
 /* 按钮 */
 .primary {

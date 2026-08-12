@@ -580,10 +580,15 @@
 
   /* ---------- 投放 → 接住 ---------- */
   const loadingWords = ["正在接住……", "别急，我在。", "慢慢来。"];
-  $("submitBtn").addEventListener("click", handleSubmit);
+  $("submitBtn").addEventListener("click", () => handleSubmit());
+  // 极速投放:说不出时,点一下当下的心情,也能被接住
+  $("quickMoods").addEventListener("click", (e) => {
+    const btn = e.target.closest(".mood");
+    if (btn) handleSubmit(btn.dataset.mood);
+  });
 
-  async function handleSubmit() {
-    const text = $("feelingText").value.trim();
+  async function handleSubmit(overrideText) {
+    const text = (typeof overrideText === "string" ? overrideText : $("feelingText").value).trim();
     if (!text) { $("feelingText").focus(); return; }
 
     setView("loading");
