@@ -11,10 +11,14 @@
   const MAP_KEY = "zala_map_v1";
   const MUTE_KEY = "zala_muted";
   const ECHO_KEY = "zala_echo_v1";          // { lastShownDay: "YYYY-MM-DD" } 每日只自动回响一次
+  const TASK_KEY = "zala_tasks_v1";         // 收下的「一件小事」
   const DAY = 24 * 3600 * 1000;
+  const HOUR = 3600 * 1000;
   const ECHO_MIN_AGE = 7 * DAY;             // 记录满 7 天才有资格回响(需要时间距离)
   const ECHO_REPEAT_GAP = 14 * DAY;         // 同一条回响后至少隔 14 天才会再次浮现
   const MILESTONES = [7, 30, 100, 365];     // 优先在这些天数节点回响
+  const TASK_FOLLOWUP_AGE = 3 * HOUR;       // 收下小事 3 小时后才回访(给时间去做)
+  const TASK_SNOOZE = 6 * HOUR;             // 「还没」后至少隔 6 小时再问
   let selectedPlace = "";
 
   /* =======================================================
@@ -303,7 +307,7 @@
       setTimeout(() => {
         const cand = pickEchoCandidate();
         if (cand) { openEcho(cand, "enter"); }
-        else { setView("input"); setTimeout(() => $("feelingText").focus(), 300); }
+        else { setView("input"); setTimeout(() => $("feelingText").focus(), 300); maybePromptTask(); }
       }, 1300);
     }
 
@@ -642,6 +646,15 @@
     }
     $("stepAction").textContent = dr.step ? dr.step.action : "";
     $("stepPermission").textContent = dr.step ? (dr.step.permission || "") : "";
+    // 一件小事:重置「收下」按钮
+    stepTaken = false;
+    const takeBtn = $("stepTakeBtn");
+    if (dr.step && dr.step.action) {
+      takeBtn.hidden = false; takeBtn.disabled = false;
+      takeBtn.classList.remove("taken"); takeBtn.textContent = "收下这件小事";
+    } else {
+      takeBtn.hidden = true;
+    }
     $("wordsText").textContent = dr.words ? dr.words.text : "";
     $("releaseAction").textContent = dr.release ? dr.release.action : "";
 
@@ -736,7 +749,7 @@
     const v = document.body.getAttribute("data-view");
     if (v === "input") resetToHome();
     else if (v === "echo") closeEcho(false);
-    else if (v === "result" || v === "map") { setView("input"); window.scrollTo(0, 0); }
+    else if (v === "result" || v === "map") { setView("input"); window.scrollTo(0, 0); maybePromptTask(); }
   });
 
   function loadMap() {
@@ -977,11 +990,98 @@
     const from = echoContext && echoContext.from;
     echoContext = null;
     if (from === "map") { renderMap(); setView("map"); window.scrollTo(0, 0); }
-    else { setView("input"); setTimeout(() => $("feelingText").focus(), 300); }
+    else { setView("input"); setTimeout(() => $("feelingText").focus(), 300); maybePromptTask(); }
   }
 
   $("ebKeepBtn").addEventListener("click", () => closeEcho(true));
   $("ebSkipBtn").addEventListener("click", () => closeEcho(false));
+
+  /* =======================================================
+     一件小事 · 收下 → 过些时候温柔回访「做了吗?没做也没关系」
+     ======================================================= */
+  function loadTasks() {
+    try { return JSON.parse(localStorage.getItem(TASK_KEY)) || []; }
+    catch { return []; }
+  }
+  function saveTasks(list) {
+    localStorage.setItem(TASK_KEY, JSON.stringify(list.slice(0, 200)));
+  }
+
+  let stepTaken = false;  // 当前结果里的小事是否已收下
+
+  function takeTask() {
+    if (stepTaken || !lastResult) return;
+    const step = (lastResult.d.drawers || {}).step;
+    if (!step || !step.action) return;
+    const list = loadTasks();
+    list.unshift({
+      id: Date.now(),
+      at: Date.now(),
+      action: step.action,
+      permission: step.permission || "",
+      emotion: lastResult.d.emotion || "",
+      weather: lastResult.d.weather || "",
+      status: "pending",
+      snoozedAt: null,
+    });
+    saveTasks(list);
+    stepTaken = true;
+    const btn = $("stepTakeBtn");
+    btn.textContent = "记下了 · 什么时候都行";
+    btn.classList.add("taken");
+    btn.disabled = true;
+  }
+
+  // 挑一条该回访的小事:pending、收下满 3 小时、最近没被"还没"顺延过。取最近一条。
+  function pickTaskToRecall() {
+    const now = Date.now();
+    return loadTasks().find((t) =>
+      t && t.status === "pending" &&
+      now - t.at >= TASK_FOLLOWUP_AGE &&
+      (!t.snoozedAt || now - t.snoozedAt >= TASK_SNOOZE)
+    ) || null;
+  }
+
+  let recallTaskId = null;
+  function maybePromptTask() {
+    const t = pickTaskToRecall();
+    const box = $("taskRecall");
+    if (!t) { box.hidden = true; recallTaskId = null; return; }
+    recallTaskId = t.id;
+    $("taskRecallText").textContent = `你收下过一件小事——「${t.action}」。做了吗?`;
+    box.classList.remove("done");
+    box.hidden = false;
+  }
+
+  function updateTask(id, patch) {
+    const list = loadTasks();
+    const i = list.findIndex((t) => t.id === id);
+    if (i >= 0) { Object.assign(list[i], patch); saveTasks(list); }
+  }
+
+  $("stepTakeBtn").addEventListener("click", takeTask);
+  $("taskDoneBtn").addEventListener("click", () => {
+    if (recallTaskId == null) return;
+    updateTask(recallTaskId, { status: "done", doneAt: Date.now() });
+    $("taskRecallText").textContent = "那就够了。你为自己做了一件事。";
+    $("taskRecall").classList.add("done");
+    recallTaskId = null;
+    setTimeout(() => {
+      if (document.body.getAttribute("data-view") === "input") $("taskRecall").hidden = true;
+    }, 1800);
+  });
+  $("taskSnoozeBtn").addEventListener("click", () => {
+    if (recallTaskId == null) return;
+    updateTask(recallTaskId, { snoozedAt: Date.now() });
+    recallTaskId = null;
+    $("taskRecall").hidden = true;
+  });
+  $("taskDropBtn").addEventListener("click", () => {
+    if (recallTaskId == null) return;
+    updateTask(recallTaskId, { status: "dropped" });
+    recallTaskId = null;
+    $("taskRecall").hidden = true;
+  });
 
   /* ---------- 降级 mock(本地直接打开、或后端未配置时) ---------- */
   function mockResponse(text) {

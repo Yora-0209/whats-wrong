@@ -43,6 +43,14 @@
 
     <!-- 投放情绪 · 卡片 -->
     <section class="view view-input" aria-label="说出此刻">
+      <div class="task-recall" id="taskRecall" hidden>
+        <p class="tr-q" id="taskRecallText"></p>
+        <div class="tr-actions">
+          <button class="tr-yes" id="taskDoneBtn" type="button">做了</button>
+          <button class="tr-no" id="taskSnoozeBtn" type="button">还没，先放着</button>
+        </div>
+        <button class="tr-drop" id="taskDropBtn" type="button">不惦记了</button>
+      </div>
       <div class="input-head">
         <p class="lead">把此刻，放进来</p>
         <p class="lead-sub">说给它听，我接着。说完，你可以让它消失。</p>
@@ -95,6 +103,7 @@
           <div class="mini-body">
             <p class="mini-title" id="stepAction"></p>
             <p class="mini-sub" id="stepPermission"></p>
+            <button class="mini-do" id="stepTakeBtn" type="button" hidden>收下这件小事</button>
           </div>
         </article>
         <article class="glass mini-drawer" data-kind="words">

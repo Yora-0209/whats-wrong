@@ -232,6 +232,31 @@ body.walking .intro-cap { opacity: 0; visibility: hidden; }
   font-size: 14px; letter-spacing: 1.5px; color: var(--paper-dim);
 }
 
+/* 一件小事 · 回访条(投放页顶部,温柔不打扰) */
+.task-recall {
+  width: 100%; padding: 16px 20px; border-radius: 18px;
+  background: var(--glass-bg); border: 1px solid rgba(207,155,75,0.3);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  text-align: center; animation: trIn 0.6s var(--ease);
+}
+.task-recall[hidden] { display: none; }
+@keyframes trIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+.tr-q { font-family: var(--serif); font-size: 16px; line-height: 1.8; color: var(--paper); }
+.task-recall.done .tr-q { color: var(--sage); }
+.tr-actions { display: flex; gap: 10px; }
+.task-recall.done .tr-actions, .task-recall.done .tr-drop { display: none; }
+.tr-yes, .tr-no {
+  padding: 8px 20px; border-radius: 999px; font-size: 13px; cursor: pointer;
+  font-family: var(--sans); letter-spacing: 1px; transition: all 0.3s var(--ease);
+}
+.tr-yes { border: none; color: #fff; background: linear-gradient(120deg, var(--violet), var(--magenta)); }
+.tr-yes:hover { transform: translateY(-1px); }
+.tr-no { background: transparent; border: 1px solid var(--glass-brd); color: var(--paper-dim); }
+.tr-no:hover { color: var(--paper); border-color: rgba(60,50,35,0.28); }
+.tr-drop { background: none; border: none; color: var(--paper-dim); font-size: 12px; cursor: pointer; opacity: 0.7; }
+.tr-drop:hover { opacity: 1; }
+
 .card-input {
   position: relative; width: 100%; padding: 24px;
   border-radius: 26px; min-height: 190px;
@@ -340,6 +365,16 @@ textarea::placeholder { color: var(--paper-dim); }
 .mini-title { font-size: 16px; color: var(--paper); }
 .mini-sub { font-size: 13px; color: var(--paper-dim); margin-top: 4px; }
 .mini-link { display: inline-block; margin-top: 8px; font-size: 13px; color: var(--clay); text-decoration: none; border-bottom: 1px solid rgba(193,122,84,0.35); }
+.mini-do {
+  display: inline-block; margin-top: 12px;
+  background: rgba(207,155,75,0.1); border: 1px solid rgba(207,155,75,0.4);
+  color: var(--amber-soft); padding: 7px 16px; border-radius: 999px;
+  font-size: 13px; letter-spacing: 1px; cursor: pointer; font-family: var(--sans);
+  transition: all 0.3s var(--ease);
+}
+.mini-do[hidden] { display: none; }
+.mini-do:hover { background: rgba(207,155,75,0.2); color: var(--amber); }
+.mini-do.taken { background: rgba(124,154,107,0.14); border-color: rgba(124,154,107,0.4); color: var(--sage); cursor: default; }
 
 .result-actions { width: 100%; display: flex; flex-direction: column; gap: 12px; margin-top: 6px; }
 
