@@ -144,13 +144,50 @@
       muted = m;
       localStorage.setItem(MUTE_KEY, m ? "1" : "0");
       document.body.classList.toggle("muted", m);
-      if (m) silenceAmbient();
+      if (m) { silenceAmbient(); stopScape(); }
     }
     function toggle() { setMuted(!muted); if (!muted) ensure(); }
     function init() { document.body.classList.toggle("muted", muted); }
 
+    /* 陪伴声景:程序化棕噪 → 低通,雨/海潮/静。进入「陪我待一会儿」时连续播放 */
+    let scape = null;
+    function stopScape() {
+      if (scape) {
+        try { scape.src.stop(); } catch { /* already */ }
+        try { if (scape.lfo) scape.lfo.stop(); } catch { /* already */ }
+        scape = null;
+      }
+    }
+    function startScape(type) {
+      stopScape();
+      if (type === "off" || muted) return;
+      const ac = ensure(); if (!ac) return;
+      const dur = 2;
+      const buf = ac.createBuffer(1, ac.sampleRate * dur, ac.sampleRate);
+      const data = buf.getChannelData(0);
+      let last = 0;
+      for (let i = 0; i < data.length; i++) {   // 棕噪:比白噪柔和,像雨/浪的底噪
+        const w = Math.random() * 2 - 1;
+        last = (last + 0.02 * w) / 1.02;
+        data[i] = last * 3.2;
+      }
+      const src = ac.createBufferSource(); src.buffer = buf; src.loop = true;
+      const lp = ac.createBiquadFilter(); lp.type = "lowpass";
+      lp.frequency.value = type === "rain" ? 1700 : 620;
+      const out = ac.createGain(); out.gain.value = 0.0001;
+      src.connect(lp); lp.connect(out); out.connect(ac.destination);
+      src.start();
+      let lfo = null;
+      if (type === "sea") {                       // 海潮:缓慢起伏的浪
+        lfo = ac.createOscillator(); lfo.type = "sine"; lfo.frequency.value = 0.11;
+        const lg = ac.createGain(); lg.gain.value = 0.05;
+        lfo.connect(lg); lg.connect(out.gain); lfo.start();
+      }
+      out.gain.setTargetAtTime(type === "rain" ? 0.12 : 0.1, ac.currentTime, 0.9);
+      scape = { src, lfo };
+    }
 
-    return { playOpen, toggle, init, activity };
+    return { playOpen, toggle, init, activity, startScape, stopScape };
   })();
 
   Sound.init();
@@ -757,6 +794,7 @@
     if (v === "input") resetToHome();
     else if (v === "echo") closeEcho(false);
     else if (v === "lock") resetToHome();
+    else if (v === "stay") { leaveStay(); setView("input"); }
     else if (v === "result" || v === "map") { setView("input"); window.scrollTo(0, 0); maybePromptTask(); }
   });
 
@@ -1213,6 +1251,52 @@
     localStorage.removeItem(ECHO_KEY);
     btn.classList.remove("confirm"); btn.textContent = "清空所有记录";
     renderMap();
+  });
+
+  /* =======================================================
+     陪我待一会儿 · 呼吸引导 + 柔和声景(什么都不用做)
+     ======================================================= */
+  let breathTimer = null, breathing = false;
+  const BREATH = [
+    { label: "吸气", ms: 4000, scale: 1 },
+    { label: "停一下", ms: 2000, scale: 1 },
+    { label: "呼气", ms: 6000, scale: 0.5 },
+  ];
+  function breatheStep(i) {
+    if (!breathing) return;
+    const p = BREATH[i % BREATH.length];
+    const orb = $("breathOrb");
+    orb.style.transitionDuration = p.ms + "ms";
+    orb.style.transform = "scale(" + p.scale + ")";
+    $("breathCue").textContent = p.label;
+    breathTimer = setTimeout(() => breatheStep(i + 1), p.ms);
+  }
+  function startBreathing() {
+    breathing = true;
+    const orb = $("breathOrb");
+    orb.style.transitionDuration = "0ms";
+    orb.style.transform = "scale(0.5)";
+    setTimeout(() => breatheStep(0), 40);
+  }
+  function stopBreathing() { breathing = false; clearTimeout(breathTimer); }
+
+  function enterStay() {
+    setView("stay");
+    window.scrollTo(0, 0);
+    startBreathing();
+    const active = $("stayScapes").querySelector(".scape.active");
+    Sound.startScape(active ? active.dataset.scape : "rain");
+  }
+  function leaveStay() { stopBreathing(); Sound.stopScape(); }
+
+  $("toStayBtn").addEventListener("click", enterStay);
+  $("stayBackBtn").addEventListener("click", () => { leaveStay(); setView("input"); });
+  $("stayScapes").addEventListener("click", (e) => {
+    const b = e.target.closest(".scape");
+    if (!b) return;
+    $("stayScapes").querySelectorAll(".scape").forEach((c) => c.classList.remove("active"));
+    b.classList.add("active");
+    Sound.startScape(b.dataset.scape);
   });
 
   /* ---------- 降级 mock(本地直接打开、或后端未配置时) ---------- */

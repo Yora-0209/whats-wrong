@@ -82,6 +82,7 @@
       </div>
       <button class="primary" id="submitBtn">轻轻放下</button>
       <button class="ghost" id="toMapBtn">看看我的情绪地图</button>
+      <button class="ghost" id="toStayBtn">只想有人陪一会儿</button>
     </section>
 
     <!-- 接住中 -->
@@ -195,6 +196,22 @@
       </div>
 
       <button class="ghost" id="backHomeBtn">回到首页</button>
+    </section>
+
+    <!-- 陪我待一会儿:呼吸引导 + 柔和声景 -->
+    <section class="view view-stay" aria-label="陪你待一会儿">
+      <p class="stay-title">什么都不用做，我陪你待一会儿。</p>
+      <div class="breath-wrap">
+        <div class="breath-orb" id="breathOrb"></div>
+        <p class="breath-cue" id="breathCue">吸气</p>
+      </div>
+      <div class="chips stay-scapes" id="stayScapes" role="group" aria-label="声景">
+        <span class="chip-label">声景</span>
+        <button class="chip scape active" data-scape="rain">雨</button>
+        <button class="chip scape" data-scape="sea">海潮</button>
+        <button class="chip scape" data-scape="off">静</button>
+      </div>
+      <button class="ghost" id="stayBackBtn">好了，回去</button>
     </section>
 
   </main>
