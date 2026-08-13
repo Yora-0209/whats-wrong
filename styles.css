@@ -392,7 +392,8 @@ textarea::placeholder { color: var(--paper-dim); }
 /* ---------- 「让它消失」:接住卡就地化作沙,再缓缓聚回首页「咋啦」 ---------- */
 body.dissolving .view-result { pointer-events: none; }
 body.dissolving .drawers,
-body.dissolving .result-actions { animation: dissolveFade 0.4s var(--ease) forwards; }
+body.dissolving .result-actions,
+body.dissolving .destinations { animation: dissolveFade 0.4s var(--ease) forwards; }
 @keyframes dissolveFade { to { opacity: 0; transform: translateY(10px); } }
 .card-echo.dissolve { animation: cardDissolve 0.55s var(--ease) forwards; }
 @keyframes cardDissolve {
@@ -474,12 +475,31 @@ body.crisis .drawers, body.crisis #keepBtn, body.crisis #sealRow { display: none
 .crisis-help strong { color: var(--amber); font-size: 18px; letter-spacing: 1px; }
 
 /* =========================================================
-   封存给未来
+   三个平级的「去向」:收进 / 封存 / 让它消失
    ========================================================= */
-.seal-row { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 2px; }
-.seal-toggle { font-size: 13px; }
-.seal-toggle.open { color: var(--paper); }
-.seal-opts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.destinations { width: 100%; display: flex; flex-direction: column; gap: 12px; margin-top: 6px; }
+.dest {
+  width: 100%; display: flex; align-items: flex-start; gap: 14px; padding: 16px 18px;
+  text-align: left; cursor: pointer; font-family: var(--sans);
+  -webkit-appearance: none; appearance: none;
+  transition: border-color 0.3s var(--ease), transform 0.2s var(--ease), box-shadow 0.3s var(--ease);
+}
+.dest:hover { border-color: rgba(124,154,107,0.5); transform: translateY(-1px); }
+.dest-ico { font-family: var(--serif); color: var(--amber-soft); font-size: 20px; width: 24px; text-align: center; flex-shrink: 0; line-height: 1.6; }
+.dest-body { display: flex; flex-direction: column; gap: 3px; }
+.dest-title { font-size: 16px; color: var(--paper); letter-spacing: 0.5px; }
+.dest-sub { font-size: 12.5px; color: var(--paper-dim); line-height: 1.7; }
+/* 封存行:一行主项 + 就地展开的时长选项 */
+.dest-seal { flex-direction: column; align-items: stretch; gap: 0; padding: 0; cursor: default; }
+.dest-main {
+  width: 100%; display: flex; align-items: flex-start; gap: 14px; padding: 16px 18px;
+  background: none; border: none; cursor: pointer; text-align: left; font-family: var(--sans);
+  -webkit-appearance: none; appearance: none;
+}
+.seal-opts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; padding: 2px 18px 16px; }
+.seal-opts[hidden] { display: none; }
+/* 让它消失:图标更轻,像放手 */
+.dest-let .dest-ico { color: var(--paper-dim); }
 
 /* =========================================================
    回响 · 来自过去的自己

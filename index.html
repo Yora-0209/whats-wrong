@@ -129,19 +129,38 @@
         </article>
       </div>
 
-      <div class="result-actions">
-        <button class="primary" id="keepBtn">收进情绪地图</button>
-        <button class="ghost" id="burnBtn">让它消失</button>
-      </div>
+      <div class="destinations" id="destinations">
+        <button class="glass dest" id="keepBtn" type="button">
+          <span class="dest-ico">◈</span>
+          <span class="dest-body">
+            <span class="dest-title">收进地图</span>
+            <span class="dest-sub">留住这一刻，它会进入你的情绪地图</span>
+          </span>
+        </button>
 
-      <div class="seal-row" id="sealRow">
-        <button class="ghost seal-toggle" id="sealToggle">或者，封存给未来的自己</button>
-        <div class="seal-opts" id="sealOpts" hidden>
-          <button class="chip" data-seal="7">7 天后</button>
-          <button class="chip" data-seal="30">30 天后</button>
-          <button class="chip" data-seal="100">100 天后</button>
-          <button class="chip" data-seal="year">明年今日</button>
+        <div class="glass dest dest-seal" id="sealRow">
+          <button class="dest-main" id="sealToggle" type="button">
+            <span class="dest-ico">✦</span>
+            <span class="dest-body">
+              <span class="dest-title">封存给未来</span>
+              <span class="dest-sub">交给时间，某天它会回来找你</span>
+            </span>
+          </button>
+          <div class="seal-opts" id="sealOpts" hidden>
+            <button class="chip" data-seal="7">7 天后</button>
+            <button class="chip" data-seal="30">30 天后</button>
+            <button class="chip" data-seal="100">100 天后</button>
+            <button class="chip" data-seal="year">明年今日</button>
+          </div>
         </div>
+
+        <button class="glass dest dest-let" id="burnBtn" type="button">
+          <span class="dest-ico">⇢</span>
+          <span class="dest-body">
+            <span class="dest-title">让它消失</span>
+            <span class="dest-sub">放它走，不留痕迹</span>
+          </span>
+        </button>
       </div>
     </section>
 
