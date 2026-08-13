@@ -80,114 +80,164 @@
       noise.start(now); noise.stop(now + dur);
     }
 
-    /* 环境轻音乐:程序化柔和 pad,只在鼠标移动/点击/滚动时渐起,静止即渐隐 */
-    let ambient = null, idleTimer = null;
-    const AMB_LEVEL = 0.11;
-    function ensureAmbient() {
+    /* ---- 音频文件加载(优先真实音源;缺失/失败则回退到合成) ----
+       把音频放到 assets/audio/ 即自动启用:
+         ambient.mp3 = 首页背景音乐   rain.mp3 = 雨   sea.mp3 = 海潮 */
+    const bufCache = {};
+    function loadBuffer(url) {
+      if (bufCache[url] !== undefined) return bufCache[url];
       const ac = ensure();
-      if (!ac) return null;
-      if (ambient) return ambient;
-      const out = ac.createGain(); out.gain.value = 0.0001;
-      const lp = ac.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 820; lp.Q.value = 0.3;
-      const lfo = ac.createOscillator(); lfo.type = "sine"; lfo.frequency.value = 0.05;
-      const lfoGain = ac.createGain(); lfoGain.gain.value = 220;
-      lfo.connect(lfoGain); lfoGain.connect(lp.frequency); lfo.start();
-      out.connect(lp); lp.connect(ac.destination);
-      // C 大调九和弦味道的低八度铺底,多把微失谐震荡叠出温润的呼吸感
+      if (!ac) return Promise.resolve(null);
+      const p = fetch(url)
+        .then((r) => { if (!r.ok) throw new Error("no file"); return r.arrayBuffer(); })
+        .then((ab) => new Promise((res, rej) => ac.decodeAudioData(ab, res, rej)))
+        .catch(() => null);
+      bufCache[url] = p;
+      return p;
+    }
+    function playLoop(ac, buffer, dest) {
+      const src = ac.createBufferSource();
+      src.buffer = buffer; src.loop = true;
+      src.connect(dest); src.start();
+      return src;
+    }
+    // 合成用的柔光混响(短脉冲卷积),让 pad 更温润、不干瘪
+    function makeReverb(ac) {
+      const len = Math.floor(ac.sampleRate * 2.4);
+      const imp = ac.createBuffer(2, len, ac.sampleRate);
+      for (let ch = 0; ch < 2; ch++) {
+        const d = imp.getChannelData(ch);
+        for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+      }
+      const cv = ac.createConvolver(); cv.buffer = imp; return cv;
+    }
+    // 合成柔和 pad(带混响)接到 dest
+    function buildMusicSynth(ac, dest) {
+      const lp = ac.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 900; lp.Q.value = 0.2;
+      const dry = ac.createGain(); dry.gain.value = 0.7;
+      const rev = makeReverb(ac); const wet = ac.createGain(); wet.gain.value = 0.5;
+      lp.connect(dry); dry.connect(dest); lp.connect(rev); rev.connect(wet); wet.connect(dest);
+      const lfo = ac.createOscillator(); lfo.type = "sine"; lfo.frequency.value = 0.045;
+      const lg = ac.createGain(); lg.gain.value = 200; lfo.connect(lg); lg.connect(lp.frequency); lfo.start();
       [130.81, 196.00, 261.63, 329.63, 392.00].forEach((f, i) => {
-        [0, 0.5, -0.5].forEach((det) => {
+        [0, 0.6, -0.6].forEach((det) => {
           const o = ac.createOscillator();
           o.type = i < 2 ? "triangle" : "sine";
           o.frequency.value = f; o.detune.value = det;
-          const g = ac.createGain(); g.gain.value = 0.14 / (i + 1);
-          o.connect(g); g.connect(out); o.start();
+          const g = ac.createGain(); g.gain.value = 0.12 / (i + 1);
+          o.connect(g); g.connect(lp); o.start();
         });
       });
-      ambient = { out };
-      return ambient;
     }
-    // 拉起音量,并安排静止后渐隐(仅在 ctx 已运行时执行,避免挂起期的时钟错乱)
-    function rampUp(ac) {
-      const amb = ensureAmbient(); if (!amb) return;
-      const now = ac.currentTime;
-      amb.out.gain.cancelScheduledValues(now);
-      amb.out.gain.setTargetAtTime(AMB_LEVEL, now, 0.18);
-      clearTimeout(idleTimer);
-      idleTimer = setTimeout(() => {
-        const t = ac.currentTime;
-        amb.out.gain.cancelScheduledValues(t);
-        amb.out.gain.setTargetAtTime(0.0001, t, 0.6);
-      }, 480);
+    // 合成声景(粉噪比棕噪更柔、更接近真实底噪)接到 dest
+    function buildNoise(ac, dest, type) {
+      const dur = 3;
+      const buf = ac.createBuffer(1, ac.sampleRate * dur, ac.sampleRate);
+      const d = buf.getChannelData(0);
+      let b0 = 0, b1 = 0, b2 = 0;
+      for (let i = 0; i < d.length; i++) {
+        const w = Math.random() * 2 - 1;
+        b0 = 0.99765 * b0 + w * 0.0990460;
+        b1 = 0.96300 * b1 + w * 0.2965164;
+        b2 = 0.57000 * b2 + w * 1.0526913;
+        d[i] = (b0 + b1 + b2 + w * 0.1848) * 0.11;
+      }
+      const src = ac.createBufferSource(); src.buffer = buf; src.loop = true;
+      const lp = ac.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = type === "rain" ? 2600 : 700;
+      src.connect(lp); lp.connect(dest); src.start();
+      let lfo = null;
+      if (type === "sea") {   // 海潮:缓慢起伏的浪
+        lfo = ac.createOscillator(); lfo.type = "sine"; lfo.frequency.value = 0.1;
+        const lg = ac.createGain(); lg.gain.value = 0.5; lfo.connect(lg); lg.connect(dest.gain); lfo.start();
+      }
+      return { src, lfo };
     }
-    // 有鼠标移动/点击/滚动时:柔和拉起音量;静止约 0.5s 后:渐隐至无声。
-    // 浏览器自动播放策略要求首个"真实手势"(点击/触摸/按键)才能解锁音频,
-    // 因此挂起时先 resume,待真正 running 后再起音。
+
+    /* ---- 背景音乐:首次手势解锁后柔和循环常驻,右上角开关控制 ---- */
+    const MUSIC_LEVEL = 0.16;
+    let musicGain = null, musicStarted = false, ducked = false;
+    async function startMusic() {
+      if (muted) return;
+      const ac = ensure(); if (!ac) return;
+      const target = ducked ? 0.03 : MUSIC_LEVEL;
+      if (musicStarted) {
+        musicGain.gain.setTargetAtTime(target, ac.currentTime, 0.4);
+        return;
+      }
+      musicStarted = true;
+      musicGain = ac.createGain(); musicGain.gain.value = 0.0001; musicGain.connect(ac.destination);
+      const buffer = await loadBuffer("assets/audio/ambient.mp3");
+      if (muted) { musicStarted = false; try { musicGain.disconnect(); } catch { /* noop */ } return; }
+      if (buffer) playLoop(ac, buffer, musicGain);
+      else buildMusicSynth(ac, musicGain);   // 无文件则回退到改良合成 pad
+      musicGain.gain.setTargetAtTime(ducked ? 0.03 : MUSIC_LEVEL, ac.currentTime, 1.2);
+    }
+    function stopMusic() {
+      if (musicGain && ctx) musicGain.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.4);
+    }
+    function duckMusic(on) {   // 进陪伴页时压低背景乐,给声景让路
+      ducked = on;
+      if (musicStarted && !muted && ctx) {
+        musicGain.gain.setTargetAtTime(on ? 0.03 : MUSIC_LEVEL, ctx.currentTime, 0.6);
+      }
+    }
+
+    // 首个手势解锁音频并起乐(移动鼠标不再门控音量,改为常驻循环)
     function activity() {
       if (muted) return;
       const ac = ensure(); if (!ac) return;
       if (ac.state !== "running") {
-        if (ac.resume) ac.resume().then(() => { if (!muted) rampUp(ac); }).catch(() => {});
+        if (ac.resume) ac.resume().then(() => { if (!muted) startMusic(); }).catch(() => {});
         return;
       }
-      rampUp(ac);
+      startMusic();
     }
-    function silenceAmbient() {
-      clearTimeout(idleTimer);
-      if (ambient && ctx) {
-        const t = ctx.currentTime;
-        ambient.out.gain.cancelScheduledValues(t);
-        ambient.out.gain.setTargetAtTime(0.0001, t, 0.2);
+
+    /* ---- 陪伴声景:雨/海潮/静。优先真实录音,缺失回退到合成 ---- */
+    const SCAPE_LEVEL = 0.5;
+    let scape = null, scapeToken = 0, currentScape = "off";
+    function stopScape() {
+      currentScape = "off";
+      const s = scape; scape = null;
+      if (s && ctx) {
+        try { s.gain.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.4); } catch { /* noop */ }
+        setTimeout(() => {
+          try { s.src.stop(); } catch { /* noop */ }
+          try { if (s.lfo) s.lfo.stop(); } catch { /* noop */ }
+        }, 600);
       }
+    }
+    async function startScape(type) {
+      const prev = scape; scape = null;
+      if (prev && ctx) {   // 交叉淡出旧声景
+        try { prev.gain.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.4); } catch { /* noop */ }
+        setTimeout(() => { try { prev.src.stop(); } catch { /* noop */ } try { if (prev.lfo) prev.lfo.stop(); } catch { /* noop */ } }, 600);
+      }
+      currentScape = type;
+      if (type === "off" || muted) return;
+      const ac = ensure(); if (!ac) return;
+      const token = ++scapeToken;
+      const gain = ac.createGain(); gain.gain.value = 0.0001; gain.connect(ac.destination);
+      const buffer = await loadBuffer("assets/audio/" + type + ".mp3");
+      if (token !== scapeToken || muted) { try { gain.disconnect(); } catch { /* noop */ } return; }
+      let node;
+      if (buffer) { node = { src: playLoop(ac, buffer, gain), lfo: null, gain }; }
+      else { const n = buildNoise(ac, gain, type); node = { src: n.src, lfo: n.lfo, gain }; }  // 回退合成
+      gain.gain.setTargetAtTime(SCAPE_LEVEL, ac.currentTime, 0.9);
+      scape = node;
     }
 
     function setMuted(m) {
       muted = m;
       localStorage.setItem(MUTE_KEY, m ? "1" : "0");
       document.body.classList.toggle("muted", m);
-      if (m) { silenceAmbient(); stopScape(); }
+      if (m) { stopMusic(); stopScape(); }
+      else { startMusic(); if (currentScape !== "off") startScape(currentScape); }
     }
     function toggle() { setMuted(!muted); if (!muted) ensure(); }
     function init() { document.body.classList.toggle("muted", muted); }
 
-    /* 陪伴声景:程序化棕噪 → 低通,雨/海潮/静。进入「陪我待一会儿」时连续播放 */
-    let scape = null;
-    function stopScape() {
-      if (scape) {
-        try { scape.src.stop(); } catch { /* already */ }
-        try { if (scape.lfo) scape.lfo.stop(); } catch { /* already */ }
-        scape = null;
-      }
-    }
-    function startScape(type) {
-      stopScape();
-      if (type === "off" || muted) return;
-      const ac = ensure(); if (!ac) return;
-      const dur = 2;
-      const buf = ac.createBuffer(1, ac.sampleRate * dur, ac.sampleRate);
-      const data = buf.getChannelData(0);
-      let last = 0;
-      for (let i = 0; i < data.length; i++) {   // 棕噪:比白噪柔和,像雨/浪的底噪
-        const w = Math.random() * 2 - 1;
-        last = (last + 0.02 * w) / 1.02;
-        data[i] = last * 3.2;
-      }
-      const src = ac.createBufferSource(); src.buffer = buf; src.loop = true;
-      const lp = ac.createBiquadFilter(); lp.type = "lowpass";
-      lp.frequency.value = type === "rain" ? 1700 : 620;
-      const out = ac.createGain(); out.gain.value = 0.0001;
-      src.connect(lp); lp.connect(out); out.connect(ac.destination);
-      src.start();
-      let lfo = null;
-      if (type === "sea") {                       // 海潮:缓慢起伏的浪
-        lfo = ac.createOscillator(); lfo.type = "sine"; lfo.frequency.value = 0.11;
-        const lg = ac.createGain(); lg.gain.value = 0.05;
-        lfo.connect(lg); lg.connect(out.gain); lfo.start();
-      }
-      out.gain.setTargetAtTime(type === "rain" ? 0.12 : 0.1, ac.currentTime, 0.9);
-      scape = { src, lfo };
-    }
-
-    return { playOpen, toggle, init, activity, startScape, stopScape };
+    return { playOpen, toggle, init, activity, startScape, stopScape, duckMusic };
   })();
 
   Sound.init();
@@ -1284,10 +1334,11 @@
     setView("stay");
     window.scrollTo(0, 0);
     startBreathing();
+    Sound.duckMusic(true);   // 压低背景乐,给声景让路
     const active = $("stayScapes").querySelector(".scape.active");
     Sound.startScape(active ? active.dataset.scape : "rain");
   }
-  function leaveStay() { stopBreathing(); Sound.stopScape(); }
+  function leaveStay() { stopBreathing(); Sound.stopScape(); Sound.duckMusic(false); }
 
   $("toStayBtn").addEventListener("click", enterStay);
   $("stayBackBtn").addEventListener("click", () => { leaveStay(); setView("input"); });
