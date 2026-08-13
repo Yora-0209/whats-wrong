@@ -1,5 +1,18 @@
-# 把音频放这里即自动启用(缺失则回退到合成音效):
-#   ambient.mp3  首页背景音乐(舒缓钢琴/环境,建议无缝循环,~1-3MB)
-#   rain.mp3     声景:雨
-#   sea.mp3      声景:海潮
-# 推荐去 Pixabay Music / 音效(免版权可商用)挑选后放入,文件名保持一致即可。
+# 把音频放这里即自动启用(文件缺失则回退到合成音效)。
+# 文件名必须与下面一致,放好后刷新页面即用真实录音(无缝循环 + 交叉淡入 + ducking)。
+# 可任意先放一个试,其余仍走合成回退。
+#
+# 音源:全部去 Pixabay Music (pixabay.com/music) —— 免费可商用、无需署名。
+#
+# ── ambient.mp3  首页背景音乐 ────────────────────────────────
+#   搜索词: ambient piano / calm meditation / fantasy relaxing / spring morning
+#   挑选:   纯钢琴或轻弦乐,无鼓点无人声,节奏慢,时长≥2分钟(循环更自然);
+#           接近 Pino / 久石让那种干净留白感。避开有明显节拍鼓组的 lofi。
+#
+# ── rain.mp3     声景:雨 ─────────────────────────────────────
+#   搜索词: gentle rain / soft rain loop / rain on window
+#   挑选:   细雨,无雷声无鸣笛等杂音,最好标注 loop 的连续录音。
+#
+# ── sea.mp3      声景:海潮 ───────────────────────────────────
+#   搜索词: ocean waves calm / gentle sea waves / beach ambience
+#   挑选:   缓慢起伏的浪声,无海鸥/人声,避免拍岸太重的。
