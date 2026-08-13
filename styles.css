@@ -302,8 +302,8 @@ textarea::placeholder { color: var(--paper-dim); }
 .mic-ico { font-size: 15px; }
 .char-hint { color: var(--paper-dim); font-size: 12px; }
 
-.chips { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; width: 100%; }
-.chip-label { color: var(--paper-dim); font-size: 13px; margin-right: 2px; }
+.chips { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; width: 100%; }
+.chip-label { color: var(--paper-dim); font-size: 12.5px; letter-spacing: 1px; margin-right: 6px; flex-shrink: 0; }
 .chip {
   background: transparent; border: 1px solid var(--glass-brd); color: var(--paper-dim);
   padding: 7px 16px; border-radius: 999px; font-size: 13px; cursor: pointer;
@@ -314,8 +314,10 @@ textarea::placeholder { color: var(--paper-dim); }
   color: #fff; border-color: transparent;
   background: linear-gradient(120deg, var(--violet), var(--magenta));
 }
-/* 极速投放:说不出就点一下的心情 chips */
-.quick-moods { margin-top: -8px; }
+/* 极速投放:说不出就点一下的心情 chips —— 强制一排,窄屏可横向隐藏滚动 */
+.quick-moods { margin-top: -8px; flex-wrap: nowrap; overflow-x: auto; -ms-overflow-style: none; scrollbar-width: none; }
+.quick-moods::-webkit-scrollbar { display: none; }
+.chip.mood { white-space: nowrap; flex-shrink: 0; }
 .chip.mood:hover { border-color: rgba(207,155,75,0.5); color: var(--amber-soft); }
 
 /* 按钮 */
