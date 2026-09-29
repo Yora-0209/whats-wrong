@@ -6,6 +6,12 @@
   "description": "咋啦 — 一个接住情绪、再轻轻递给你一个出口的地方。",
   "scripts": {
     "dev": "npx --yes serve@latest .",
-    "start": "npx --yes serve@latest ."
+    "start": "npx --yes serve@latest .",
+    "preview:diary": "node scripts/preview-server.mjs",
+    "test:diary": "node --test tests/*.test.mjs",
+    "test:preview": "node tests/preview.e2e.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
   }
 }

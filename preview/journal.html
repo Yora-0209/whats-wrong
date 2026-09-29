@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>窗边的情绪日记 · 咋啦</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header>
+      <a href="./" id="home">窗边的一张纸</a><span>情绪日记</span
+      ><a href="../">打开原版</a>
+    </header>
+    <main>
+      <section class="intro journal-intro">
+        <div>
+          <p class="eyebrow">PAGES YOU CHOSE TO KEEP</p>
+          <h1>Journal</h1>
+          <p>当时发生的事，留在这里。<br />想回看时，再翻开。</p>
+          <button class="primary" id="new">新写一页 ↗</button
+          ><button class="quiet" id="demo">看看一条示例</button>
+        </div>
+        <figure>
+          <img src="./assets/notebook.png" alt="翻开的绿色日记本" />
+          <figcaption>情绪日记</figcaption>
+        </figure>
+      </section>
+      <section class="journal" aria-label="情绪日记">
+        <aside>
+          <h2>情绪日记</h2>
+          <p class="muted">这里留着你选择保存的事情。</p>
+          <div id="entries"></div>
+          <div class="tools">
+            <button id="export">导出记录</button
+            ><button id="import">复制原版记录</button>
+          </div>
+          <small
+            >保存在当前浏览器，未加密。清除网站数据会移除记录，建议定期导出。</small
+          >
+        </aside>
+        <article class="paper">
+          <div class="paper-top">
+            <span id="date">TODAY, ON PAPER</span
+            ><span id="badge">新的一页</span>
+          </div>
+          <details id="saved-conversation" hidden>
+            <summary>当时的对话</summary>
+            <div id="saved-messages"></div>
+          </details>
+          <form id="form">
+            <label for="title">这一天的小标题</label
+            ><input
+              id="title"
+              maxlength="40"
+              placeholder="可以不写标题"
+            /><label for="text">今天发生了什么？</label
+            ><textarea
+              id="text"
+              maxlength="2000"
+              rows="6"
+              placeholder="从一件具体的小事写起，也可以只写此刻的感受。"
+            ></textarea>
+            <div class="actions">
+              <button class="primary" type="submit">保存文字</button
+              ><button type="button" id="art-toggle">给这段话配张小画</button>
+            </div>
+          </form>
+          <section id="art-panel" hidden>
+            <h3>这张小画，画什么？</h3>
+            <p class="muted">
+              可以自己描述；也可以让 AI 根据原文整理，再由你修改。
+            </p>
+            <button id="suggest">根据原文整理画面</button
+            ><small
+              >点击会将当前原文发送给文字模型。姓名、地址等信息建议先移除。</small
+            ><label for="scene">发送给绘图服务的画面描述</label
+            ><textarea
+              id="scene"
+              rows="3"
+              maxlength="300"
+              placeholder="例如：几张改过的草稿纸，旁边放着一支短铅笔。"
+            ></textarea>
+            <p id="basis" class="muted"></p>
+            <div class="actions">
+              <button id="generate" class="primary">生成小画</button
+              ><button id="cancel-art" hidden>取消等待</button
+              ><button id="remove-art">只留文字</button>
+            </div>
+            <small
+              >生图只发送上面的描述。配图是艺术表达，不是对你的心理判断。</small
+            >
+          </section>
+          <figure id="artwork" hidden>
+            <img id="art-image" alt="这条记录的小画" />
+            <figcaption id="art-caption"></figcaption>
+          </figure>
+          <div class="seal">
+            <label for="revisit">什么时候再看看（可选）</label
+            ><input type="date" id="revisit" /><small
+              >到期后在日记中提示，不发送通知。</small
+            >
+          </div>
+          <div class="actions bottom">
+            <button id="save-all" class="primary">保存这一页</button
+            ><button id="delete" class="danger" hidden>删除这条记录</button>
+          </div>
+          <p id="status" role="status" aria-live="polite"></p>
+        </article>
+      </section>
+    </main>
+    <footer>不想写，也可以先关上。<span>只留你选择保存的内容。</span></footer>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

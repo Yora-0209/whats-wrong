@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#f6f3e9" />
+    <title>How are you today · 咋啦</title>
+    <link rel="icon" href="../favicon.svg" />
+    <link rel="stylesheet" href="./desk.css" />
+  </head>
+  <body data-screen="home">
+    <header class="topbar">
+      <button id="back" class="text-button" hidden>← 回到桌前</button
+      ><span class="edition">窗边 · 一张纸</span
+      ><a href="./journal.html" class="top-journal">情绪日记 ↗</a>
+    </header>
+    <main>
+      <section
+        id="home-screen"
+        class="screen home-screen"
+        aria-label="窗边的书桌"
+      >
+        <div class="desk-scene">
+          <img
+            class="garden"
+            src="./assets/window.png"
+            alt="打开的窗户外，有绿色的花园和几朵小花"
+          />
+          <div class="greeting">
+            <p class="eyebrow">A LITTLE ROOM FOR YOU</p>
+            <h1>How are you<br /><span>today</span><i>?</i></h1>
+            <p>什么心情，都可以坐一会儿。</p>
+          </div>
+          <div class="desk-wash" aria-hidden="true"></div>
+          <a
+            class="object object-journal"
+            href="./journal.html"
+            aria-label="Journal，打开情绪日记"
+            ><img src="./assets/book.png" alt="绿色日记本" /><span
+              class="object-label"
+              ><b>Journal</b><small>情绪日记</small></span
+            ></a
+          >
+          <button
+            class="object object-paper"
+            id="write"
+            aria-label="Write，把情绪写下来"
+          >
+            <span class="paper-stack"
+              ><img class="paper-art" src="./assets/paper.png" alt="" /><span
+                class="paper-content"
+                ><b>Write</b><span>把情绪写下来</span
+                ><span
+                  class="little-line"
+                  aria-hidden="true"
+                ></span></span></span
+            ><span class="pencil" aria-hidden="true"></span>
+          </button>
+          <button
+            class="object object-radio"
+            id="listen"
+            aria-label="Listen，听一会儿"
+          >
+            <img src="./assets/radio.png" alt="砖红色收音机" /><span
+              class="object-label"
+              ><b>Listen</b><small>听一会儿</small></span
+            >
+          </button>
+        </div>
+        <p class="home-note">
+          点一个物件，坐一会儿。<span>也可以什么都不做。</span>
+        </p>
+      </section>
+      <section
+        id="write-screen"
+        class="screen narrow-screen"
+        aria-labelledby="write-title"
+        hidden
+      >
+        <div class="view-heading">
+          <span class="eyebrow">A PAGE FOR TODAY</span>
+          <h2 id="write-title" tabindex="-1">把情绪写下来</h2>
+          <p>不必整理好，也不用一次说完。</p>
+        </div>
+        <article class="conversation-paper">
+          <div
+            id="conversation"
+            class="conversation"
+            aria-live="polite"
+            aria-relevant="additions"
+          ></div>
+          <form id="write-form">
+            <label class="sr-only" for="feeling">想写下的话</label
+            ><textarea
+              id="feeling"
+              rows="5"
+              maxlength="2000"
+              placeholder="今天发生了什么？或者，只写下此刻的感受。"
+            ></textarea>
+            <div class="compose-foot">
+              <span id="count">0 / 2000</span
+              ><button class="primary" id="send" type="submit">
+                说好了 ↗
+              </button>
+            </div>
+          </form>
+          <div id="waiting" hidden>
+            <span class="waiting-dots" aria-hidden="true">· · ·</span>
+            正在生成回应
+            <button id="cancel-chat" class="text-button">取消等待</button>
+          </div>
+          <p id="chat-status" role="status"></p>
+          <div id="reply-actions" class="actions" hidden>
+            <button id="continue" class="primary">我还想说一点</button
+            ><button id="activity">听一会儿</button>
+          </div>
+          <div id="error-actions" class="actions" hidden>
+            <button id="retry">重新试试</button
+            ><button id="write-more">继续写</button>
+          </div>
+          <section id="support" class="support" hidden>
+            <h3>先照顾此刻的安全</h3>
+            <p>
+              如果有立即危险，请联系当地紧急服务。也可以联系一位可信任的人，请对方来到你身边。
+            </p>
+            <p>这个网页不能提供紧急救援。</p>
+          </section>
+          <div class="paper-bottom">
+            <button id="finish" class="text-button">先到这里</button
+            ><span>由 AI 回应 · 你可以随时结束</span>
+          </div>
+        </article>
+        <details class="privacy">
+          <summary>关于这张纸与隐私</summary>
+          <p>
+            点击“说好了”会将这次对话的最近内容发送给 AI
+            服务。未选择保存时，对话只在当前页面内存中；刷新或不保存结束后会丢失。保存的日记只在当前浏览器，未加密。服务提供方的数据处理仍遵循其自身政策。
+          </p>
+        </details>
+      </section>
+      <section
+        id="listen-screen"
+        class="screen narrow-screen listen-screen"
+        aria-labelledby="listen-title"
+        hidden
+      >
+        <p class="eyebrow">STAY A LITTLE</p>
+        <h2 id="listen-title" tabindex="-1">听一会儿</h2>
+        <p>可以只听声音，不用说什么。</p>
+        <img
+          class="listening-radio"
+          src="./assets/radio.png"
+          alt="桌上的收音机"
+        />
+        <div class="audio-paper">
+          <fieldset>
+            <legend>选一种声音</legend>
+            <label
+              ><input type="radio" name="sound" value="rain" checked />
+              雨声</label
+            ><label><input type="radio" name="sound" value="sea" /> 海潮</label>
+          </fieldset>
+          <button id="play-audio" class="primary">播放雨声</button
+          ><label class="volume-label" for="volume"
+            >音量
+            <input
+              id="volume"
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value="0.35"
+          /></label>
+          <p id="audio-status" role="status"></p>
+          <button id="return-paper" class="text-button">回到桌前</button>
+        </div>
+      </section>
+    </main>
+    <footer><span>留一点空白，给今天。</span><a href="../">原版 ↗</a></footer>
+    <dialog id="finish-dialog">
+      <form method="dialog">
+        <p class="eyebrow">BEFORE YOU GO</p>
+        <h2>这段话要留下吗？</h2>
+        <p>可以只保存文字，小画以后再配。</p>
+        <button id="save-conversation" class="primary" type="button">
+          保存到情绪日记</button
+        ><button id="discard-conversation" type="button">不保存，结束</button
+        ><button value="cancel" class="text-button">继续写</button>
+        <p id="save-status" role="status"></p>
+      </form>
+    </dialog>
+    <script type="module" src="./desk.js"></script>
+  </body>
+</html>
