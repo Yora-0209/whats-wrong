@@ -8,13 +8,15 @@ import {
 export default async function handler(req, res) {
   noStore(res);
   const { IMAGE_BASE_URL, IMAGE_API_KEY, IMAGE_MODEL } = process.env;
+  const missing = ['IMAGE_BASE_URL','IMAGE_API_KEY','IMAGE_MODEL'].filter(name => !process.env[name]?.trim());
+  const switchedOn = process.env.DIARY_ART_ENABLED?.trim().toLowerCase() === 'true';
   const enabled =
-    process.env.DIARY_ART_ENABLED === "true" &&
+    switchedOn &&
     !!IMAGE_BASE_URL &&
     !!IMAGE_API_KEY &&
     !!IMAGE_MODEL;
   if (req.method === "GET")
-    return res.status(200).json({ enabled, styleVersion: STYLE_VERSION });
+    return res.status(200).json({ enabled, styleVersion: STYLE_VERSION, configuration: { switchedOn, missing } });
   if (req.method !== "POST")
     return res.status(405).json({ error: "仅支持 POST" });
   if (!enabled)

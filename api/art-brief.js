@@ -8,10 +8,6 @@ export default async function handler(req, res) {
   noStore(res);
   if (req.method !== "POST")
     return res.status(405).json({ error: "仅支持 POST" });
-  if (process.env.DIARY_ART_ENABLED !== "true")
-    return res
-      .status(503)
-      .json({ error: "配图服务尚未开启，可以直接填写画面描述。" });
   let body;
   try {
     body = parseBody(req);
