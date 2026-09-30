@@ -11,4 +11,25 @@
 .paper label[for="title"],.paper label[for="text"]{display:flex;align-items:center;gap:10px;width:fit-content;font-size:15px;font-weight:bold;background:#e5eadb;padding:7px 14px;border-radius:3px 9px 4px 7px;margin:26px 0 12px;box-shadow:2px 2px 0 #d6ddc9;}
 .paper label[for="title"]::before{content:'✎';font-size:23px;font-family:serif;transform:rotate(-12deg);color:#a3533d;}
 .paper label[for="text"]::before{content:'♡';font-size:23px;font-family:serif;transform:rotate(8deg);color:#a3533d;}
-.paper #title,.paper #text{background:#fffdf7;border:1px dashed #b6bfa8;border-radius:4px 7px 3px 5px;padding:14px 16px;width:100%;box-sizing:border-box;}
+.paper #title,
+.paper #text {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 14px 10px;
+  width: 100%;
+  box-sizing: border-box;
+  line-height: 2;
+}
+.paper #title {
+  border-bottom: 1px solid #b6bfa866;
+  padding-bottom: 12px;
+}
+.paper #title:focus { border-bottom-color: #82977d; }
+.paper #text { padding-top: 16px; padding-bottom: 24px; }
+.paper #title:focus-visible,
+.paper #text:focus-visible {
+  outline: 2px solid #82977d;
+  outline-offset: 5px;
+}
