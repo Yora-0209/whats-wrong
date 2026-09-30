@@ -24,6 +24,11 @@ body {
     KaiTi,
     serif;
 }
+body[data-screen="home"] {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
 button,
 a,
 input,
@@ -105,8 +110,19 @@ main {
   margin: auto;
   padding: 0 50px;
 }
+body[data-screen="home"] main {
+  width: 100%;
+  min-height: 0;
+}
+.home-screen {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
 .desk-scene {
   position: relative;
+  width: min(100%, calc((100dvh - 205px) * 1.55));
   max-width: 1030px;
   aspect-ratio: 1.55;
   margin: 20px auto 0;
@@ -308,7 +324,7 @@ main {
 .home-note {
   text-align: center;
   font-size: 16px;
-  margin: 25px 0 55px;
+  margin: 14px 0 18px;
 }
 .home-note span {
   font-size: 13px;
@@ -318,7 +334,7 @@ main {
 footer {
   max-width: 1200px;
   margin: auto;
-  padding: 25px 40px;
+  padding: 14px 40px 18px;
   display: flex;
   justify-content: space-between;
   font-size: 12px;
@@ -724,6 +740,7 @@ dialog button {
   }
   .desk-scene {
     aspect-ratio: 0.83;
+    width: min(100%, calc((100dvh - 205px) * 0.83));
     margin-top: 0;
   }
   .garden {
@@ -793,7 +810,7 @@ dialog button {
   }
   .home-note {
     font-size: 14px;
-    margin: 32px 0 30px;
+    margin: 12px 0 14px;
   }
   .home-note span {
     display: block;
@@ -840,7 +857,7 @@ dialog button {
     padding: 25px 8px;
   }
   footer {
-    padding: 20px 24px;
+    padding: 10px 24px 14px;
   }
   .utterance {
     font-size: 17px;

@@ -80,6 +80,34 @@ function renderMessages() {
 function searchLink(query, type = 1) {
   return `https://music.163.com/#/search/m/?s=${encodeURIComponent(query)}&type=${type}`;
 }
+function freshSongs(pool) {
+  const storageKey = "zala-recent-song-suggestions-v1";
+  let recent = [];
+  try {
+    recent = JSON.parse(localStorage.getItem(storageKey) || "[]");
+    if (!Array.isArray(recent)) recent = [];
+  } catch {
+    recent = [];
+  }
+  const key = (song) => song.join(" · ");
+  const unseen = pool.filter((song) => !recent.includes(key(song)));
+  const candidates = unseen.length >= 3 ? unseen : pool;
+  const shuffled = [...candidates];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  const selected = shuffled.slice(0, 3);
+  try {
+    const next = [...selected.map(key), ...recent].filter(
+      (item, index, all) => all.indexOf(item) === index,
+    );
+    localStorage.setItem(storageKey, JSON.stringify(next.slice(0, 24)));
+  } catch {
+    // Recommendations still work when storage is unavailable.
+  }
+  return selected;
+}
 function sticker(title, kicker, fill) {
   const card = document.createElement("article");
   card.className = "sticker";
@@ -127,9 +155,10 @@ function renderSuggestions(value) {
   section.hidden = !suggestions || crisis;
   if (section.hidden) return;
   const music = suggestions.music;
+  const songs = freshSongs(music.songs);
   grid.append(
     sticker(music.title, "听三首歌", (detail) => {
-      for (const [title, artist] of music.songs) {
+      for (const [title, artist] of songs) {
         const link = document.createElement("a");
         link.href = searchLink(`${title} ${artist}`);
         link.target = "_blank";
