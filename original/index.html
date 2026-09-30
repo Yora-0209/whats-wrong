@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <base href="/" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>咋啦</title>
+  <meta name="description" content="一个接住情绪、再轻轻递给你一个出口的地方。" />
+  <meta name="theme-color" content="#0c1f17" />
+  <link rel="icon" type="image/png" sizes="32x32" href="./assets/brand/favicon-32.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./assets/brand/apple-touch-icon.png" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body data-view="intro">
+  <!-- 灵动神秘:漂浮的极光星云 -->
+  <div class="aurora" aria-hidden="true">
+    <span class="blob b1"></span>
+    <span class="blob b2"></span>
+    <span class="blob b3"></span>
+  </div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <!-- 沙画舞台:开屏「咋啦」凝聚 → 轻触后小人走向「咋啦」 -->
+  <canvas id="sand" class="sand" role="button" tabindex="0" aria-label="轻触，走进来"></canvas>
+
+  <!-- 开屏文案(固定在视口下方,浮在沙画之上) -->
+  <div class="intro-cap" id="introCap">
+    <p class="zala-en">What's&nbsp;wrong?</p>
+    <p class="hint" id="introHint">轻触，走进来</p>
+  </div>
+
+  <!-- 声音开关 -->
+  <button class="sound-toggle" id="soundToggle" aria-label="声音开关" title="声音">
+    <span class="snd-on">♪</span><span class="snd-off">×</span>
+  </button>
+
+  <!-- 返回键(粒子点线箭头,除首页外显示) -->
+  <button class="back-btn" id="backBtn" aria-label="返回">
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+      <path d="M14 5 L7 12 L14 19 M7 12 L20 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+  </button>
+
+  <main class="stage">
+
+    <!-- 投放情绪 · 卡片 -->
+    <section class="view view-input" aria-label="说出此刻">
+      <div class="task-recall" id="taskRecall" hidden>
+        <p class="tr-q" id="taskRecallText"></p>
+        <div class="tr-actions">
+          <button class="tr-yes" id="taskDoneBtn" type="button">做了</button>
+          <button class="tr-no" id="taskSnoozeBtn" type="button">还没，先放着</button>
+        </div>
+        <button class="tr-drop" id="taskDropBtn" type="button">不惦记了</button>
+      </div>
+      <div class="input-head">
+        <p class="lead">把此刻，放进来</p>
+        <p class="lead-sub">说给它听，我接着。说完，你可以让它消失。</p>
+      </div>
+      <div class="glass card-input">
+        <textarea id="feelingText" rows="4" placeholder="今天是咋啦……" maxlength="600"></textarea>
+        <div class="input-tools">
+          <button class="mic-btn" id="micBtn" type="button" aria-label="语音输入">
+            <span class="mic-ico">🎙</span><span class="mic-label" id="micLabel">说给它听</span>
+          </button>
+          <span class="char-hint" id="charHint"></span>
+        </div>
+      </div>
+      <div class="chips quick-moods" id="quickMoods" role="group" aria-label="说不出就点一下">
+        <span class="chip-label">说不出，点一下</span>
+        <button class="chip mood" data-mood="一团乱麻">一团乱麻</button>
+        <button class="chip mood" data-mood="累到发空">累到发空</button>
+        <button class="chip mood" data-mood="烦">烦</button>
+        <button class="chip mood" data-mood="还好">还好</button>
+        <button class="chip mood" data-mood="松了口气">松了口气</button>
+      </div>
+      <div class="chips" id="placeChips" role="group" aria-label="此刻在哪">
+        <span class="chip-label">在哪</span>
+        <button class="chip" data-place="家">家</button>
+        <button class="chip" data-place="公司">公司</button>
+        <button class="chip" data-place="路上">路上</button>
+        <button class="chip" data-place="别处">别处</button>
+      </div>
+      <button class="primary" id="submitBtn">轻轻放下</button>
+      <button class="ghost" id="toMapBtn">看看我的情绪地图</button>
+      <button class="ghost" id="toStayBtn">只想有人陪一会儿</button>
+    </section>
+
+    <!-- 接住中 -->
+    <section class="view view-loading" aria-label="接住中" aria-live="polite">
+      <div class="breathing"></div>
+      <p class="loading-word" id="loadingWord">正在接住……</p>
+    </section>
+
+    <!-- 结果:接住 + 出口抽屉 -->
+    <section class="view view-result" aria-label="接住与出口">
+      <div class="glass card-echo" id="echoCard">
+        <span class="weather-chip" id="weatherChip"></span>
+        <p class="echo" id="echoText"></p>
+        <p class="emotion" id="emotionText"></p>
+      </div>
+
+      <div class="drawers" id="drawersWrap">
+        <article class="glass mini-drawer" data-kind="song">
+          <span class="mini-icon">♪</span>
+          <div class="mini-body">
+            <p class="mini-title" id="songTitle"></p>
+            <p class="mini-sub" id="songWhy"></p>
+            <a class="mini-link" id="songLink" target="_blank" rel="noopener">去听</a>
+          </div>
+        </article>
+        <article class="glass mini-drawer" data-kind="step">
+          <span class="mini-icon">›</span>
+          <div class="mini-body">
+            <p class="mini-title" id="stepAction"></p>
+            <p class="mini-sub" id="stepPermission"></p>
+            <button class="mini-do" id="stepTakeBtn" type="button" hidden>收下这件小事</button>
+          </div>
+        </article>
+        <article class="glass mini-drawer" data-kind="words">
+          <span class="mini-icon">“</span>
+          <div class="mini-body">
+            <p class="mini-title" id="wordsText"></p>
+          </div>
+        </article>
+        <article class="glass mini-drawer" data-kind="release">
+          <span class="mini-icon">~</span>
+          <div class="mini-body">
+            <p class="mini-title" id="releaseAction"></p>
+          </div>
+        </article>
+      </div>
+
+      <div class="destinations" id="destinations">
+        <button class="glass dest" id="keepBtn" type="button">
+          <span class="dest-ico">◈</span>
+          <span class="dest-body">
+            <span class="dest-title">收进地图</span>
+            <span class="dest-sub">留住这一刻，它会进入你的情绪地图</span>
+          </span>
+        </button>
+
+        <div class="glass dest dest-seal" id="sealRow">
+          <button class="dest-main" id="sealToggle" type="button">
+            <span class="dest-ico">✦</span>
+            <span class="dest-body">
+              <span class="dest-title">封存给未来</span>
+              <span class="dest-sub">交给时间，某天它会回来找你</span>
+            </span>
+          </button>
+          <div class="seal-opts" id="sealOpts" hidden>
+            <button class="chip" data-seal="7">7 天后</button>
+            <button class="chip" data-seal="30">30 天后</button>
+            <button class="chip" data-seal="100">100 天后</button>
+            <button class="chip" data-seal="year">明年今日</button>
+          </div>
+        </div>
+
+        <button class="glass dest dest-let" id="burnBtn" type="button">
+          <span class="dest-ico">⇢</span>
+          <span class="dest-body">
+            <span class="dest-title">让它消失</span>
+            <span class="dest-sub">放它走，不留痕迹</span>
+          </span>
+        </button>
+      </div>
+    </section>
+
+    <!-- 回响 · 来自过去的自己 -->
+    <section class="view view-echo" aria-label="回响">
+      <p class="eb-eyebrow">一束光，来自过去的你</p>
+      <div class="glass card-echoback" id="echoBackCard">
+        <p class="eb-when" id="ebWhen"></p>
+        <p class="eb-origin" id="ebOrigin"></p>
+        <p class="eb-caught" id="ebCaught"></p>
+        <div class="eb-line-wrap"><p class="eb-line" id="ebLine">……</p></div>
+        <p class="eb-crisis" id="ebCrisis" hidden>如果那份沉还在，别一个人扛 · 希望24热线 <strong>400-161-9995</strong></p>
+      </div>
+      <div class="eb-thread" id="ebThread" hidden></div>
+      <div class="glass card-input eb-reply-card">
+        <textarea id="ebReply" rows="2" maxlength="200" placeholder="给过去的自己，说一句……（可留空）"></textarea>
+      </div>
+      <div class="result-actions">
+        <button class="primary" id="ebKeepBtn">写下了</button>
+        <button class="ghost" id="ebSkipBtn">现在不想看</button>
+      </div>
+    </section>
+
+    <!-- 解锁(地图上了锁时) -->
+    <section class="view view-lock" aria-label="解锁">
+      <p class="lock-title">这里，只给你</p>
+      <p class="lock-sub" id="lockSub">输入你的密码</p>
+      <input class="lock-input" id="lockInput" type="password" inputmode="numeric" autocomplete="off" maxlength="4" aria-label="密码" />
+      <button class="primary" id="lockEnterBtn">进入</button>
+      <button class="ghost" id="lockBackBtn">回到首页</button>
+    </section>
+
+    <!-- 情绪地图 -->
+    <section class="view view-map" aria-label="情绪地图">
+      <p class="lead">你的情绪地图</p>
+      <p class="map-sub" id="mapSub">这里只留你亲手收进来的。</p>
+      <div class="glass card-echo echo-week" id="echoWeek" hidden></div>
+      <div class="glass cal-wrap">
+        <div class="cal-title" id="calTitle"></div>
+        <div class="cal-grid" id="heatmap"></div>
+        <div class="heat-legend"><span>淡</span><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i><i class="l5"></i><span>浓</span></div>
+      </div>
+      <div class="map-list" id="mapList"></div>
+
+      <div class="privacy-panel">
+        <button class="ghost priv-toggle" id="privToggle" type="button">隐私与安全</button>
+        <div class="priv-body" id="privBody" hidden>
+          <div class="priv-row" id="lockRow"></div>
+          <button class="ghost priv-danger" id="clearAllBtn" type="button">清空所有记录</button>
+        </div>
+      </div>
+
+      <button class="ghost" id="backHomeBtn">回到首页</button>
+    </section>
+
+    <!-- 陪我待一会儿:呼吸引导 + 柔和声景 -->
+    <section class="view view-stay" aria-label="陪你待一会儿">
+      <p class="stay-title">什么都不用做，我陪你待一会儿。</p>
+      <div class="breath-wrap">
+        <div class="breath-orb" id="breathOrb"></div>
+        <p class="breath-cue" id="breathCue">吸气</p>
+      </div>
+      <div class="chips stay-scapes" id="stayScapes" role="group" aria-label="声景">
+        <span class="chip-label">声景</span>
+        <button class="chip scape active" data-scape="rain">雨</button>
+        <button class="chip scape" data-scape="sea">海潮</button>
+        <button class="chip scape" data-scape="off">静</button>
+      </div>
+      <button class="ghost" id="stayBackBtn">好了，回去</button>
+    </section>
+
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>

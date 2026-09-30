@@ -1,6 +1,13 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/preview/",
+      "permanent": false
+    }
+  ],
   "functions": {
     "api/paper-chat.js": {
       "maxDuration": 60
