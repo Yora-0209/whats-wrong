@@ -7,6 +7,8 @@
     <link rel="icon" type="image/png" sizes="32x32" href="../assets/brand/favicon-32.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="../assets/brand/apple-touch-icon.png" />
     <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./journal-extras.css" />
+    <link rel="stylesheet" href="./music.css" />
   </head>
   <body>
     <header>
@@ -32,6 +34,12 @@
           <h2>情绪日记</h2>
           <p class="muted">这里留着你选择保存的事情。</p>
           <div id="entries"></div>
+          <section class="calendar" aria-label="情绪日历">
+            <div class="calendar-nav"><button id="month-prev" aria-label="上个月">←</button><strong id="month-label"></strong><button id="month-next" aria-label="下个月">→</button></div>
+            <div class="calendar-week" aria-hidden="true"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
+            <div id="calendar-days"></div>
+            <button id="all-days">查看全部记录</button><p id="day-label" role="status"></p>
+          </section>
           <div class="tools">
             <button id="export">导出记录</button
             ><button id="import">复制原版记录</button>
@@ -84,6 +92,7 @@
               ><button id="remove-art">只留文字</button>
             </div>
             <p id="art-status" role="status" aria-live="polite"></p>
+            <div id="art-progress" hidden><div class="pencil-track" role="progressbar" aria-label="小画正在生成，完成比例未知"><span></span></div><p id="art-elapsed"></p></div>
           </section>
           <figure id="artwork" hidden>
             <img id="art-image" alt="这条记录的小画" />
@@ -105,5 +114,7 @@
     </main>
     <footer>不想写，也可以先关上。<span>只留你选择保存的内容。</span></footer>
     <script type="module" src="./app.js"></script>
+    <script type="module" src="./music.js"></script>
+    <dialog id="memory-card" aria-labelledby="memory-title"><button id="memory-close" aria-label="关闭卡片">×</button><time id="memory-date"></time><h2 id="memory-title"></h2><img id="memory-image" alt="这一天的小画" hidden /><p id="memory-text"></p><button id="memory-edit">继续编辑这一页 ↗</button></dialog>
   </body>
 </html>

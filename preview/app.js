@@ -1,4 +1,44 @@
 const $ = (id) => document.getElementById(id);
+let month = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+let selectedDay = null, viewedEntry = null, progressTimer = null;
+function dateKey(value) {
+  const d = new Date(value);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function openCard(entry) {
+  viewedEntry = entry;
+  $('memory-date').textContent = new Date(entry.createdAt).toLocaleString('zh-CN');
+  $('memory-title').textContent = entry.title || '那一天的心情';
+  $('memory-text').textContent = entry.text;
+  $('memory-image').hidden = !entry.art;
+  if (entry.art) $('memory-image').src = entry.art.image;
+  else $('memory-image').removeAttribute('src');
+  $('memory-card').showModal();
+}
+function renderCalendar() {
+  $('month-label').textContent = `${month.getFullYear()}年 ${month.getMonth()+1}月`;
+  const grid = $('calendar-days'); grid.replaceChildren();
+  const offset = (month.getDay()+6)%7;
+  for (let i=0;i<offset;i++) grid.append(document.createElement('span'));
+  const counts = new Map();
+  for (const entry of entries) { const key=dateKey(entry.createdAt); counts.set(key,(counts.get(key)||0)+1); }
+  const days = new Date(month.getFullYear(),month.getMonth()+1,0).getDate();
+  for (let day=1;day<=days;day++) {
+    const key=dateKey(new Date(month.getFullYear(),month.getMonth(),day));
+    const count=counts.get(key)||0;
+    const button=document.createElement('button'); button.textContent=day;
+    button.className=count?'has-entry':'';
+    button.setAttribute('aria-label',`${key}，${count}条记录`);
+    button.setAttribute('aria-pressed',String(selectedDay===key));
+    button.onclick=()=>{selectedDay=key;renderList();}; grid.append(button);
+  }
+  $('day-label').textContent=selectedDay?`${selectedDay} · ${counts.get(selectedDay)||0}条记录`:'有圆点的日子，留着你的心情。';
+}
+$('month-prev').onclick=()=>{month=new Date(month.getFullYear(),month.getMonth()-1,1);renderCalendar();};
+$('month-next').onclick=()=>{month=new Date(month.getFullYear(),month.getMonth()+1,1);renderCalendar();};
+$('all-days').onclick=()=>{selectedDay=null;renderList();};
+$('memory-close').onclick=()=>$('memory-card').close();
+$('memory-edit').onclick=()=>{if(canLeave()){ $('memory-card').close();show(viewedEntry);$('form').scrollIntoView({block:'start'});}};
 let db,
   entries = [],
   current = null,
@@ -44,6 +84,8 @@ function fresh() {
   };
 }
 function cancel() {
+  clearInterval(progressTimer);
+  $('art-progress').hidden = true;
   requestVersion++;
   controller?.abort();
   controller = null;
@@ -89,7 +131,7 @@ function renderHistory() {
     if (!m || typeof m.content !== "string") continue;
     const p = document.createElement("p");
     const label = document.createElement("strong");
-    label.textContent = m.role === "assistant" ? "AI 回应：" : "你写下的：";
+    label.textContent = m.role === "assistant" ? "咋啦回应：" : "你写下的：";
     p.append(label, document.createTextNode(m.content));
     list.append(p);
   }
@@ -104,6 +146,7 @@ function renderArt() {
   }
 }
 function renderList() {
+  renderCalendar();
   const box = $("entries");
   box.replaceChildren();
   if (!entries.length) {
@@ -112,6 +155,7 @@ function renderList() {
     box.append(p);
   }
   for (const entry of [...entries].sort((a, b) => b.createdAt - a.createdAt)) {
+    if (selectedDay && dateKey(entry.createdAt) !== selectedDay) continue;
     const button = document.createElement("button");
     button.className = "entry";
     button.setAttribute("aria-current", String(entry.id === current?.id));
@@ -123,6 +167,7 @@ function renderList() {
       new Date(entry.createdAt).toLocaleDateString("zh-CN") +
       (entry.demo ? " · 示例" : "");
     button.append(title, date);
+    if(entry.art){const image=document.createElement('img');image.src=entry.art.image;image.alt='这一天的小画';image.loading='lazy';button.prepend(image);}
     if (entry.revisit) {
       const label = document.createElement("span");
       label.textContent =
@@ -132,10 +177,7 @@ function renderList() {
       button.append(label);
     }
     button.onclick = () => {
-      if (canLeave()) {
-        show(entry);
-        $("form").scrollIntoView({ block: "start" });
-      }
+      openCard(entry);
     };
     box.append(button);
   }
@@ -157,6 +199,7 @@ async function save() {
     text: $("text").value.trim(),
     scene: $("scene").value.trim(),
     revisit: $("revisit").value,
+    updatedAt: Date.now(),
   };
   try {
     await storage("readwrite", (store) => store.put(next));
@@ -284,6 +327,7 @@ $("suggest").onclick = async () => {
   }
 };
 $("generate").onclick = async () => {
+  if (!$('text').value.trim()) { artStatus('先写下一点心情，再为它配画。',true); $('text').focus(); return; }
   const scene = $("scene").value.trim();
   if (!scene) {
     artStatus("先描述你希望画下来的物件或形状。", true);
@@ -296,14 +340,10 @@ $("generate").onclick = async () => {
   $("generate").disabled = true;
   $("cancel-art").hidden = false;
   artStatus("正在画下这个画面……");
-  const waiting = [
-    setTimeout(() => {
-      if (token === requestVersion) artStatus("还在慢慢上色，请再等一会儿……");
-    }, 12000),
-    setTimeout(() => {
-      if (token === requestVersion) artStatus("快画好了，正在收尾……");
-    }, 30000),
-  ];
+  $('art-progress').hidden=false;
+  const started=Date.now();
+  const tick=()=>{$('art-elapsed').textContent=`已等待 ${Math.floor((Date.now()-started)/1000)} 秒 · 小画完成后会自动保存`;};
+  tick(); progressTimer=setInterval(tick,1000);
   try {
     const art = await api("/api/diary-art", { scene });
     if (token !== requestVersion) return;
@@ -320,12 +360,12 @@ $("generate").onclick = async () => {
     };
     dirty = true;
     editRevision++;
-    renderArt();
-    artStatus("小画已生成。点击“保存这一页”，将它与文字一起留下。");
+  renderArt();
+    const saved = await save();
+    if(token===requestVersion) artStatus(saved ? '小画和文字已一起保存在这一天。可以在日历里回看。' : '小画已画好，但还没有保存成功。请保留页面并再次保存。', !saved);
   } catch (error) {
     if (token === requestVersion) artStatus(error.message, true);
   } finally {
-    waiting.forEach(clearTimeout);
     if (token === requestVersion) cancel();
   }
 };

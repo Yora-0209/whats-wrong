@@ -1,0 +1,2 @@
+.music-switch { position:fixed; right:22px; bottom:65px; z-index:10; padding:8px 13px; min-height:44px; background:#f6f3e9; color:#234f3e; border:1.5px solid #82977d; border-radius:43% 9% 40% 12% / 12% 40% 14% 35%; box-shadow:2px 3px 0 #ddd8c7; font:14px/1.6 PaperHand,serif; cursor:pointer; transform:rotate(-3deg); }
+@media(max-width:700px){.music-switch{right:12px;bottom:58px;font-size:12px;}}
