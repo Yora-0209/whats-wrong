@@ -33,6 +33,10 @@ export default async function handler(req, res) {
     // OpenAI-compatible image generation; the configured model is never substituted.
     const base = IMAGE_BASE_URL.trim().replace(/\/+$/, "");
     const endpoint = `${base}${new URL(base).pathname === "/" ? "/v1" : ""}/images/generations`;
+    const configuredSize = process.env.IMAGE_SIZE?.trim();
+    const size = /^(1K|1\.5K|2K|\d{3,4}x\d{3,4})$/.test(configuredSize || "")
+      ? configuredSize
+      : "1K";
     const response = await fetch(
       endpoint,
       {
@@ -46,7 +50,7 @@ export default async function handler(req, res) {
           model: IMAGE_MODEL,
           prompt: `${ART_STYLE}\nScene data: ${JSON.stringify(body.scene)}`,
           n: 1,
-          size: "1024x1024",
+          size,
           response_format: "b64_json",
         }),
       },

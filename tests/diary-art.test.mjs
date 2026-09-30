@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateBrief, validScene } from "../lib/diary-art.js";
+import { ART_STYLE, validateBrief, validScene } from "../lib/diary-art.js";
 import art from "../api/diary-art.js";
 import brief from "../api/art-brief.js";
 function response() {
@@ -32,6 +32,10 @@ test("rejects invented evidence and malformed model output", () => {
   assert.throws(() => validateBrief({ ...b, basis: "被领导批评" }, source));
   assert.throws(() => validateBrief({ ...b, abstract: "false" }, source));
   assert.equal(validScene("a".repeat(301)), false);
+});
+test("keeps scene-led colors and uses brand colors only as a fallback", () => {
+  assert.match(ART_STYLE, /Follow colors stated or naturally suggested by the scene/);
+  assert.match(ART_STYLE, /Only when the scene has no clear color cues/);
 });
 test("disabled image service does not make an upstream call", async () => {
   const old = process.env.DIARY_ART_ENABLED;
@@ -103,6 +107,7 @@ test("Seedream request normalizes host and persists PNG or JPEG base64", async (
         assert.equal(body.model, config.IMAGE_MODEL);
         assert.equal(body.response_format, "b64_json");
         assert.equal(body.n, 1);
+        assert.equal(body.size, "1K");
         return { ok: true, json: async () => ({data:[{b64_json:Buffer.from(signature,"hex").toString("base64")}]}) };
       };
       const r = response();

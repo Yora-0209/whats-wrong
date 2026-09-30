@@ -82,6 +82,7 @@ npm run test:preview
 | IMAGE_MODEL | doubao-seedream-5-0-pro-260628 |
 | IMAGE_API_KEY | 在 Vercel 中填写自己的密钥，不提交到 Git |
 | DIARY_ART_ENABLED | true（预览访问控制就绪后启用） |
+| IMAGE_SIZE | 1K（可选；不填写时默认使用 1K） |
 
 文字模型的 LLM_BASE_URL、LLM_API_KEY、LLM_MODEL 也需在 Preview 环境可用。保存后重新部署功能分支。打开部署地址的 `/preview/`。
 

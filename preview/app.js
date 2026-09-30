@@ -290,7 +290,15 @@ $("generate").onclick = async () => {
   controller = new AbortController();
   $("generate").disabled = true;
   $("cancel-art").hidden = false;
-  status("小画正在生成，你仍然可以保存文字。");
+  status("正在画下这个画面……");
+  const waiting = [
+    setTimeout(() => {
+      if (token === requestVersion) status("还在慢慢上色，请再等一会儿……");
+    }, 12000),
+    setTimeout(() => {
+      if (token === requestVersion) status("快画好了，正在收尾……");
+    }, 30000),
+  ];
   try {
     const art = await api("/api/diary-art", { scene });
     if (token !== requestVersion) return;
@@ -312,6 +320,7 @@ $("generate").onclick = async () => {
   } catch (error) {
     if (token === requestVersion) status(error.message, true);
   } finally {
+    waiting.forEach(clearTimeout);
     if (token === requestVersion) cancel();
   }
 };

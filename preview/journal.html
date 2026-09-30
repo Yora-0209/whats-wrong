@@ -67,13 +67,8 @@
           </form>
           <section id="art-panel" hidden>
             <h3>这张小画，画什么？</h3>
-            <p class="muted">
-              可以自己描述；也可以让 AI 根据原文整理，再由你修改。
-            </p>
-            <button id="suggest">根据原文整理画面</button
-            ><small
-              >点击会将当前原文发送给文字模型。姓名、地址等信息建议先移除。</small
-            ><label for="scene">发送给绘图服务的画面描述</label
+            <button id="suggest">帮我想想画什么</button
+            ><label for="scene">描述你心中的画面</label
             ><textarea
               id="scene"
               rows="3"
@@ -86,9 +81,6 @@
               ><button id="cancel-art" hidden>取消等待</button
               ><button id="remove-art">只留文字</button>
             </div>
-            <small
-              >生图只发送上面的描述。配图是艺术表达，不是对你的心理判断。</small
-            >
           </section>
           <figure id="artwork" hidden>
             <img id="art-image" alt="这条记录的小画" />
