@@ -36,7 +36,7 @@ export default async function handler(req, res) {
     const configuredSize = process.env.IMAGE_SIZE?.trim();
     const size = /^(1K|1\.5K|2K|\d{3,4}x\d{3,4})$/.test(configuredSize || "")
       ? configuredSize
-      : "1K";
+      : "1024x1024";
     const response = await fetch(
       endpoint,
       {
@@ -55,7 +55,12 @@ export default async function handler(req, res) {
         }),
       },
     );
-    if (!response.ok) throw new Error("upstream");
+    if (!response.ok) {
+      console.error("[diary-art] provider rejected request", {
+        status: response.status,
+      });
+      throw new Error(`provider-${response.status}`);
+    }
     const payload = await response.json();
     const b64 = payload.data?.[0]?.b64_json;
     if (
@@ -63,24 +68,40 @@ export default async function handler(req, res) {
       b64.length > 4000000 ||
       !/^[A-Za-z0-9+/]+={0,2}$/.test(b64)
     )
-      throw new Error("invalid image");
+      throw new Error("invalid-image");
     const bytes = Buffer.from(b64, "base64");
     const mime = bytes.subarray(0, 8).toString("hex") === "89504e470d0a1a0a"
       ? "image/png"
       : bytes.subarray(0, 3).toString("hex") === "ffd8ff"
         ? "image/jpeg" : null;
-    if (!mime) throw new Error("expected PNG or JPEG");
+    if (!mime) throw new Error("invalid-image");
     return res
       .status(200)
       .json({
         image: `data:${mime};base64,${b64}`,
         styleVersion: STYLE_VERSION,
       });
-  } catch {
+  } catch (error) {
+    const reason =
+      error?.name === "TimeoutError" || error?.name === "AbortError"
+        ? "timeout"
+        : error?.message === "invalid-image"
+          ? "invalid-image"
+          : String(error?.message || "provider-error").startsWith("provider-")
+            ? error.message
+            : "provider-error";
+    console.error("[diary-art] generation failed", { reason });
+    const message =
+      reason === "timeout"
+        ? "这张小画画得有些久。文字和原来的配图都还在，请稍后再试。"
+        : reason === "invalid-image"
+          ? "这次收到的小画格式不完整。文字和原来的配图都还在，请再试一次。"
+          : "小画暂时没有生成成功。文字和原来的配图都还在，请稍后重试。";
     return res
       .status(502)
       .json({
-        error: "小画暂时没有生成成功。文字和原来的配图都还在，请稍后重试。",
+        error: message,
+        code: reason,
       });
   }
 }

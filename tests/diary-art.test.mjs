@@ -107,7 +107,7 @@ test("Seedream request normalizes host and persists PNG or JPEG base64", async (
         assert.equal(body.model, config.IMAGE_MODEL);
         assert.equal(body.response_format, "b64_json");
         assert.equal(body.n, 1);
-        assert.equal(body.size, "1K");
+        assert.equal(body.size, "1024x1024");
         return { ok: true, json: async () => ({data:[{b64_json:Buffer.from(signature,"hex").toString("base64")}]}) };
       };
       const r = response();
