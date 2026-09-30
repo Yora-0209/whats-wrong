@@ -1,4 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": null
+  "framework": null,
+  "functions": {
+    "api/paper-chat.js": {
+      "maxDuration": 60
+    }
+  }
 }

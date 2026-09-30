@@ -9,6 +9,7 @@ import {
 import { parseBody, noStore } from "../lib/diary-art.js";
 export default async function handler(req, res) {
   noStore(res);
+  res.setHeader("X-Zala-Chat-Version", "3");
   if (req.method !== "POST")
     return res.status(405).json({ error: "仅支持 POST" });
   let messages;
@@ -33,7 +34,7 @@ export default async function handler(req, res) {
       `${LLM_BASE_URL.replace(/\/$/, "")}/chat/completions`,
       {
         method: "POST",
-        signal: AbortSignal.timeout(30000),
+        signal: AbortSignal.timeout(45000),
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${LLM_API_KEY}`,

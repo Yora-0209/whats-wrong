@@ -239,7 +239,7 @@ async function requestReply() {
   announce("");
   const token = ++version;
   request = new AbortController();
-  const timeout = setTimeout(() => request?.abort(), 35000);
+  const timeout = setTimeout(() => request?.abort(), 50000);
   try {
     const response = await fetch("/api/paper-chat", {
       method: "POST",

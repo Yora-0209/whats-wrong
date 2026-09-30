@@ -48,9 +48,10 @@ test("normalizes prior replies so second-turn history stays valid JSON", () => {
     { role: "assistant", content: "好像有不少事情挤在一起。" },
     { role: "user", content: "哪些是最要紧的？" },
   ]);
-  assert.equal(history[1].role, "assistant");
-  assert.equal(JSON.parse(history[1].content).echo, "好像有不少事情挤在一起。");
-  assert.equal(history[2].content, "哪些是最要紧的？");
+  assert.equal(history.length, 1);
+  assert.equal(history[0].role, "user");
+  assert.ok(history[0].content.includes("[咋啦此前回应]\n好像有不少事情挤在一起。"));
+  assert.ok(history[0].content.endsWith("[用户]\n哪些是最要紧的？"));
 });
 test("accepts fenced JSON and safe plain-text provider replies", () => {
   const fenced = parseProviderReply(
@@ -136,8 +137,13 @@ test("second turn reaches the provider with normalized history and succeeds", as
     assert.equal(r.code, 200);
     assert.equal(r.value.safety, "ok");
     assert.equal(
-      JSON.parse(upstreamBody.messages[2].content).echo,
-      "好像有不少事情挤在一起。",
+      upstreamBody.messages.length,
+      2,
+    );
+    assert.ok(
+      upstreamBody.messages[1].content.includes(
+        "[咋啦此前回应]\n好像有不少事情挤在一起。",
+      ),
     );
   } finally {
     globalThis.fetch = saved.fetch;
