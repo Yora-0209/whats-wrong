@@ -15,7 +15,8 @@ const SpeechRecognition =
   window.SpeechRecognition || window.webkitSpeechRecognition;
 let recognition = null,
   listening = false,
-  speechBase = "";
+  speechBase = "",
+  gotSpeech = false;
 const audio = new Audio();
 audio.loop = true;
 audio.preload = "none";
@@ -47,6 +48,7 @@ function stopListening() {
 }
 function showScreen(next) {
   if (screen === "listen" && next !== "listen") stopAudio();
+  if (screen === "write" && next !== "write") stopListening();
   screen = next;
   document.body.dataset.screen = next;
   for (const name of ["home", "write", "listen"])
@@ -270,12 +272,13 @@ if (!SpeechRecognition) {
   recognition.interimResults = true;
   recognition.onstart = () => {
     listening = true;
-    speechBase = $("feeling").value.trim();
+    $("voice").disabled = false;
     $("voice").textContent = "停止听写";
     $("voice").setAttribute("aria-pressed", "true");
     $("speech-status").textContent = "正在听，你可以慢慢说……";
   };
   recognition.onresult = (event) => {
+    gotSpeech = true;
     let transcript = "";
     for (let i = 0; i < event.results.length; i++)
       transcript += event.results[i][0].transcript;
@@ -287,37 +290,61 @@ if (!SpeechRecognition) {
     updateComposerCount();
   };
   recognition.onerror = (event) => {
-    const denied = ["not-allowed", "service-not-allowed"].includes(event.error);
-    $("speech-status").textContent = denied
-      ? "没有获得麦克风权限。可以在浏览器设置中允许后再试。"
-      : event.error === "no-speech"
-        ? "刚才没有听清，可以再试一次。"
-        : "听写暂时没有成功，可以继续打字。";
+    const messages = {
+      "not-allowed": "麦克风被拦截了。请在地址栏的网站设置中允许麦克风，再刷新页面。",
+      "service-not-allowed":
+        "麦克风被拦截了。请在地址栏的网站设置中允许麦克风，再刷新页面。",
+      "no-speech": "刚才没有听清，可以再试一次。",
+      "audio-capture": "没有找到可用的麦克风，请检查设备后再试。",
+      network:
+        "当前浏览器暂时连不上听写服务。可以换用 Chrome，或使用系统键盘上的麦克风。",
+      aborted: "听写已停止，已经写下的内容还在。",
+    };
+    $("speech-status").textContent =
+      messages[event.error] || "听写暂时没有成功，可以继续打字。";
   };
   recognition.onend = () => {
     listening = false;
+    $("voice").disabled = false;
     $("voice").textContent = "说给纸听";
     $("voice").setAttribute("aria-pressed", "false");
     if ($("speech-status").textContent.startsWith("正在听"))
-      $("speech-status").textContent = $("feeling").value.trim()
+      $("speech-status").textContent = gotSpeech
         ? "已经写在纸上了，你可以继续修改。"
         : "没有听到内容，可以再试一次。";
   };
-  $("voice").onclick = () => {
+  $("voice").onclick = async () => {
     if (listening) {
       recognition.stop();
       return;
     }
     $("speech-status").textContent = "";
+    $("voice").disabled = true;
+    if (navigator.mediaDevices?.getUserMedia) {
+      try {
+        $("speech-status").textContent = "正在请求麦克风权限……";
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach((track) => track.stop());
+      } catch {
+        $("speech-status").textContent =
+          "没有获得麦克风权限。请在地址栏的网站设置中允许麦克风，再刷新页面。";
+        $("voice").disabled = false;
+        return;
+      }
+    }
+    speechBase = $("feeling").value.trim();
+    gotSpeech = false;
     try {
       recognition.start();
     } catch {
       $("speech-status").textContent = "听写正在准备，请稍后再试。";
+      $("voice").disabled = false;
     }
   };
 }
 $("write-form").onsubmit = (event) => {
   event.preventDefault();
+  stopListening();
   if (request) return;
   const text = $("feeling").value.trim();
   if (!text) {

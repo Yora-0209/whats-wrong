@@ -439,29 +439,72 @@ textarea::placeholder {
 .sticker-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
+  gap: 22px;
   align-items: start;
+  padding: 18px 7px 8px;
 }
 .sticker {
-  background: #f2e6bd;
-  border: 1px solid #d8c997;
-  box-shadow: 3px 4px 0 #e5dfcf;
+  position: relative;
+  background:
+    repeating-linear-gradient(2deg, transparent 0 13px, #8a714408 14px 15px),
+    linear-gradient(118deg, #f6e9b8, #efe0a9 75%, #e8d496);
+  filter: drop-shadow(5px 7px 0 #d9d3c3aa);
+  clip-path: polygon(
+    0 2%, 3% 0, 7% 1.5%, 12% 0, 18% 1%, 24% 0, 31% 1.5%,
+    38% 0, 45% 1%, 53% 0, 61% 1.5%, 69% 0, 77% 1%, 85% 0,
+    92% 1.5%, 97% 0, 100% 2%, 99% 9%, 100% 17%, 99% 25%,
+    100% 34%, 99% 43%, 100% 53%, 99% 63%, 100% 72%, 99% 81%,
+    100% 90%, 98% 100%, 92% 98.5%, 85% 100%, 78% 98.5%, 70% 100%,
+    62% 98.5%, 54% 100%, 46% 98.5%, 38% 100%, 30% 98.5%, 22% 100%,
+    15% 98.5%, 8% 100%, 2% 98%, 0 92%, 1% 84%, 0 75%, 1% 65%,
+    0 55%, 1% 45%, 0 35%, 1% 25%, 0 15%
+  );
   transform: rotate(-1deg);
+  padding-top: 17px;
+}
+.sticker::before {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  top: 4px;
+  left: 27%;
+  width: 48%;
+  height: 25px;
+  background:
+    repeating-linear-gradient(90deg, #ffffff18 0 9px, #aa865012 10px 11px),
+    #d5b77dbb;
+  clip-path: polygon(2% 9%, 98% 0, 96% 92%, 3% 100%, 0 65%);
+  transform: rotate(-4deg);
+  box-shadow: 0 1px 1px #715f3b22;
 }
 .sticker:nth-child(2) {
-  background: #e7e3d5;
-  border-color: #c9c2ac;
+  background:
+    repeating-linear-gradient(-2deg, transparent 0 14px, #57534208 15px 16px),
+    linear-gradient(125deg, #e9e5d8, #ded9ca);
   transform: rotate(1.2deg);
 }
+.sticker:nth-child(2)::before {
+  left: 22%;
+  width: 55%;
+  background-color: #b9a989aa;
+  transform: rotate(3deg);
+}
 .sticker:nth-child(3) {
-  background: #dfe8d6;
-  border-color: #bdcbae;
+  background:
+    repeating-linear-gradient(1deg, transparent 0 14px, #41604808 15px 16px),
+    linear-gradient(120deg, #e3eadb, #d4dfca);
   transform: rotate(-0.5deg);
+}
+.sticker:nth-child(3)::before {
+  left: 30%;
+  width: 44%;
+  background-color: #c7a978a6;
+  transform: rotate(-2deg);
 }
 .sticker-toggle {
   width: 100%;
   min-height: 112px;
-  padding: 17px;
+  padding: 20px 17px 17px;
   border: 0;
   text-align: left;
   background: transparent !important;
