@@ -1,5 +1,43 @@
 import { saveEntry } from "./storage.js";
 const $ = (id) => document.getElementById(id);
+const moodChoices = [
+  ["有点开心", "M9 17 Q14 23 19 17", "warm"],
+  ["充满期待", "M9 17 Q14 22 19 17", "warm"],
+  ["心里暖暖的", "M10 18 Q14 21 18 18", "warm"],
+  ["还算平静", "M10 18 L18 18", "calm"],
+  ["有点无聊", "M11 19 L17 19", "calm"],
+  ["说不清楚", "M9 19 Q12 16 14 19 T19 19", "calm"],
+  ["有点焦虑", "M9 20 Q14 15 19 20", "blue"],
+  ["有点委屈", "M10 20 Q14 16 18 20", "blue"],
+  ["有点烦躁", "M9 19 L19 18", "pink"],
+  ["有点孤单", "M10 20 Q14 17 18 20", "blue"],
+  ["有些疲惫", "M11 19 L17 19", "calm"],
+  ["想歇一会儿", "M10 18 Q14 20 18 18", "pink"],
+];
+for (const [label, mouth, tone] of moodChoices) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = `mood-note mood-${tone}`;
+  button.innerHTML = `<svg viewBox="0 0 28 28" aria-hidden="true"><path d="M14 3 C27 2 29 24 15 25 C1 27 -1 4 14 3Z"/><path d="M9 11 l.2 1 M19 11 l-.2 1 ${mouth}"/></svg>`;
+  button.append(document.createTextNode(label));
+  button.addEventListener("click", () => {
+    stopListening();
+    const input = $("feeling");
+    const sentence = `我现在${label}。`;
+    if (!input.value.includes(sentence)) {
+      const next = input.value + (input.value.trim() ? "\n" : "") + sentence;
+      if (next.length > input.maxLength) {
+        announce("纸快写满了，先删减一点文字再选吧。");
+        return;
+      }
+      input.value = next;
+      updateComposerCount();
+    }
+    input.focus({ preventScroll: true });
+    announce(`已写下「${label}」，可以修改，也可以直接说好了。`);
+  });
+  $("mood-notes").append(button);
+}
 let screen = "home",
   messages = [],
   request = null,
@@ -108,6 +146,27 @@ function freshSongs(pool) {
   }
   return selected;
 }
+function freshSuggestion(primary, pool, storageKey) {
+  const options = Array.isArray(pool) && pool.length ? pool : [primary];
+  let recent = [];
+  try {
+    recent = JSON.parse(localStorage.getItem(storageKey) || "[]");
+    if (!Array.isArray(recent)) recent = [];
+  } catch {
+    recent = [];
+  }
+  const unseen = options.filter((item) => !recent.includes(item.title));
+  const oldest = Math.max(...options.map((item) => recent.indexOf(item.title)));
+  const candidates = unseen.length ? unseen : options.filter((item) => recent.indexOf(item.title) === oldest);
+  const selected = candidates[Math.floor(Math.random() * candidates.length)];
+  try {
+    const next = [selected.title, ...recent.filter((title) => title !== selected.title)];
+    localStorage.setItem(storageKey, JSON.stringify(next.slice(0, 8)));
+  } catch {
+    // Recommendations still work when storage is unavailable.
+  }
+  return selected;
+}
 function sticker(title, kicker, fill) {
   const card = document.createElement("article");
   card.className = "sticker";
@@ -174,7 +233,11 @@ function renderSuggestions(value) {
       detail.append(more);
     }),
   );
-  const movie = suggestions.movie;
+  const movie = freshSuggestion(
+    suggestions.movie,
+    suggestions.movie.options,
+    "zala-recent-movie-suggestions-v1",
+  );
   grid.append(
     sticker(movie.title, "看一部电影", (detail) => {
       const note = document.createElement("p");
@@ -187,7 +250,11 @@ function renderSuggestions(value) {
       detail.append(note, link);
     }),
   );
-  const action = suggestions.action;
+  const action = freshSuggestion(
+    suggestions.action,
+    suggestions.action.options,
+    "zala-recent-action-suggestions-v1",
+  );
   grid.append(
     sticker(action.title, "现在做件小事", (detail) => {
       const p = document.createElement("p");

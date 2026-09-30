@@ -74,7 +74,9 @@ test("turns constrained picks into real, safe suggestion cards", () => {
   assert.equal(selected.music.songs[0][0], "日不落");
   assert.equal(selected.music.songs.length, 15);
   assert.equal(selected.movie.title, "心灵奇旅");
+  assert.equal(selected.movie.options.length, 5);
   assert.ok(selected.action.detail.length > 0);
+  assert.equal(selected.action.options.length, 5);
   const fallback = resolveSuggestions({ music: "invented" }, "今天很累");
   assert.equal(fallback.music.songs[0][0], "Weightless");
   assert.equal(fallback.movie.title, "完美的日子");
