@@ -4,6 +4,8 @@ import {
   validateMessages,
   validateReply,
   resolveSuggestions,
+  parseProviderReply,
+  providerMessages,
   explicitDanger,
 } from "../lib/paper-chat.js";
 import handler from "../api/paper-chat.js";
@@ -40,6 +42,29 @@ test("rejects system-role injection, excessive input and malformed replies", () 
     "ok",
   );
 });
+test("normalizes prior replies so second-turn history stays valid JSON", () => {
+  const history = providerMessages([
+    { role: "user", content: "我有点紧张。" },
+    { role: "assistant", content: "好像有不少事情挤在一起。" },
+    { role: "user", content: "哪些是最要紧的？" },
+  ]);
+  assert.equal(history[1].role, "assistant");
+  assert.equal(JSON.parse(history[1].content).echo, "好像有不少事情挤在一起。");
+  assert.equal(history[2].content, "哪些是最要紧的？");
+});
+test("accepts fenced JSON and safe plain-text provider replies", () => {
+  const fenced = parseProviderReply(
+    '```json\n{"safety":"ok","echo":"先看看最靠近截止时间的一件。"}\n```',
+    "哪些是最要紧的？",
+  );
+  assert.equal(fenced.echo, "先看看最靠近截止时间的一件。");
+  const plain = parseProviderReply(
+    "可以先写下今天必须完成的一件事，其他的暂时放到旁边。",
+    "哪些是最要紧的？",
+  );
+  assert.equal(plain.safety, "ok");
+  assert.ok(plain.suggestions.music.songs.length >= 3);
+});
 test("turns constrained picks into real, safe suggestion cards", () => {
   const selected = resolveSuggestions(
     { music: "bright", movie: "soul", action: "note-one" },
@@ -66,6 +91,65 @@ test("explicit danger receives support even without provider configuration", asy
   assert.equal(r.value.safety, "crisis");
   assert.ok(r.value.echo.includes("紧急服务"));
   assert.equal(explicitDanger("今天很开心"), false);
+});
+test("second turn reaches the provider with normalized history and succeeds", async () => {
+  const saved = {
+    base: process.env.LLM_BASE_URL,
+    key: process.env.LLM_API_KEY,
+    model: process.env.LLM_MODEL,
+    fetch: globalThis.fetch,
+  };
+  process.env.LLM_BASE_URL = "https://provider.example/v1";
+  process.env.LLM_API_KEY = "test-only";
+  process.env.LLM_MODEL = "test-model";
+  let upstreamBody;
+  globalThis.fetch = async (_url, options) => {
+    upstreamBody = JSON.parse(options.body);
+    return new Response(
+      JSON.stringify({
+        choices: [
+          {
+            message: {
+              content: "可以先圈出今天必须完成、并且最接近截止时间的一件事。",
+            },
+          },
+        ],
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
+  };
+  try {
+    const r = response();
+    await handler(
+      {
+        method: "POST",
+        body: {
+          messages: [
+            { role: "user", content: "事情很多，有点紧张。" },
+            { role: "assistant", content: "好像有不少事情挤在一起。" },
+            { role: "user", content: "哪些是最要紧的？" },
+          ],
+        },
+      },
+      r,
+    );
+    assert.equal(r.code, 200);
+    assert.equal(r.value.safety, "ok");
+    assert.equal(
+      JSON.parse(upstreamBody.messages[2].content).echo,
+      "好像有不少事情挤在一起。",
+    );
+  } finally {
+    globalThis.fetch = saved.fetch;
+    for (const [key, value] of [
+      ["LLM_BASE_URL", saved.base],
+      ["LLM_API_KEY", saved.key],
+      ["LLM_MODEL", saved.model],
+    ]) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
 });
 test("unconfigured provider returns honest error without fabricated response", async () => {
   const env = process.env.LLM_API_KEY;

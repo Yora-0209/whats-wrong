@@ -2,8 +2,9 @@ import {
   PAPER_PROMPT,
   SAFETY_REPLY,
   explicitDanger,
+  parseProviderReply,
+  providerMessages,
   validateMessages,
-  validateReply,
 } from "../lib/paper-chat.js";
 import { parseBody, noStore } from "../lib/diary-art.js";
 export default async function handler(req, res) {
@@ -25,7 +26,9 @@ export default async function handler(req, res) {
     return res
       .status(503)
       .json({ error: "回应服务尚未连接。你可以继续写，或只保存文字。" });
+  let stage = "request";
   try {
+    stage = "upstream";
     const upstream = await fetch(
       `${LLM_BASE_URL.replace(/\/$/, "")}/chat/completions`,
       {
@@ -38,18 +41,37 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           model: LLM_MODEL,
           response_format: { type: "json_object" },
-          messages: [{ role: "system", content: PAPER_PROMPT }, ...messages],
+          messages: [
+            { role: "system", content: PAPER_PROMPT },
+            ...providerMessages(messages),
+          ],
         }),
       },
     );
-    if (!upstream.ok) throw new Error("upstream");
+    if (!upstream.ok) {
+      console.error("[paper-chat] upstream rejected", {
+        status: upstream.status,
+        turns: messages.length,
+      });
+      throw new Error(`upstream-${upstream.status}`);
+    }
+    stage = "response-json";
     const data = await upstream.json();
-    const reply = validateReply(
-      JSON.parse(data.choices?.[0]?.message?.content),
+    stage = "reply-content";
+    const reply = parseProviderReply(
+      data.choices?.[0]?.message?.content,
       messages.at(-1).content,
     );
     return res.status(200).json(reply);
-  } catch {
+  } catch (error) {
+    console.error("[paper-chat] request failed", {
+      stage,
+      reason:
+        error?.name === "TimeoutError"
+          ? "timeout"
+          : String(error?.message || "unknown").slice(0, 80),
+      turns: messages.length,
+    });
     return res
       .status(502)
       .json({ error: "暂时没连上，文字还在。可以重新试试，也可以先保存。" });
