@@ -974,14 +974,19 @@ body.leaving {
 /* Small paper notes beneath the writing area. */
 .mood-picker { border:0; padding:0; margin:12px 0 24px; min-width:0; }
 .mood-picker legend { color:#657b65; font-size:14px; margin-bottom:18px; }
-.mood-notes { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:18px 12px; }
+.mood-notes { display:flex; flex-wrap:wrap; gap:18px 14px; }
 .mood-note { position:relative; display:flex; align-items:center; justify-content:center; gap:6px; padding:14px 7px 10px; background:#eee5bd; border:1px solid #c9c3a6; border-radius:2px 5px 2px 3px; box-shadow:2px 3px 0 #254e3e16; color:#254e3e; font:inherit; font-size:15px; cursor:pointer; transform:rotate(-1.5deg); }
 .mood-note:nth-child(even) { transform:rotate(1.5deg); }
 .mood-note::before { content:""; position:absolute; width:28px; height:10px; top:-6px; left:calc(50% - 14px); background:#b9b99999; transform:rotate(-9deg); border-left:2px dotted #ffffee99; border-right:2px dotted #ffffee99; }
 .mood-note:nth-child(3n)::before { width:7px; height:7px; left:calc(50% - 4px); top:3px; border:0; border-radius:50%; background:#ad6550; box-shadow:1px 2px 0 #63372833; }
 .mood-calm { background:#e4e9d8; }.mood-blue { background:#dee7e8; }.mood-pink { background:#f0dfd4; }
 .mood-note svg { width:25px; height:25px; flex-shrink:0; fill:none; stroke:currentColor; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
-.mood-note:hover { box-shadow:3px 5px 0 #254e3e24; }
+.mood-note { --note-paper:#eee5bd; --note-angle:-1.5deg; flex:0 0 auto; width:auto; min-width:0; white-space:nowrap; padding:14px 16px 10px; background:var(--note-paper); transition:transform 160ms ease,box-shadow 160ms ease; }
+.mood-note:nth-child(even) { --note-angle:1.5deg; }
+.mood-note.mood-calm { --note-paper:#e4e9d8; }
+.mood-note.mood-blue { --note-paper:#dee7e8; }
+.mood-note.mood-pink { --note-paper:#f0dfd4; }
+.mood-note:hover, .mood-note:focus-visible { background:var(--note-paper); color:#254e3e; transform:translateY(-3px) rotate(var(--note-angle)); box-shadow:3px 6px 0 #254e3e24; }
+.mood-note:active { transform:translateY(1px) rotate(var(--note-angle)); box-shadow:1px 1px 0 #254e3e24; }
 .mood-note:focus-visible { outline:2px solid #254e3e; outline-offset:4px; }
-@media(max-width:900px) { .mood-notes { grid-template-columns:repeat(3,minmax(0,1fr)); } }
-@media(max-width:480px) { .mood-notes { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(prefers-reduced-motion:reduce) { .mood-note { transition:none; } }
