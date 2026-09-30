@@ -13,6 +13,9 @@ let screen = "home",
   audioReturn = "home";
 const SpeechRecognition =
   window.SpeechRecognition || window.webkitSpeechRecognition;
+const toSimplified = window.OpenCC
+  ? window.OpenCC.Converter({ from: "tw", to: "cn" })
+  : (text) => text;
 let recognition = null,
   listening = false,
   speechBase = "",
@@ -282,6 +285,7 @@ if (!SpeechRecognition) {
     let transcript = "";
     for (let i = 0; i < event.results.length; i++)
       transcript += event.results[i][0].transcript;
+    transcript = toSimplified(transcript);
     $("feeling").value = `${speechBase}${speechBase && transcript ? "\n" : ""}${transcript}`.slice(
       0,
       2000,
