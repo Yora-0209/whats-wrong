@@ -87,8 +87,8 @@ button:disabled {
   text-underline-offset: 6px;
 }
 .topbar {
-  max-width: 1280px;
-  margin: auto;
+  width: 100%;
+  max-width: none;
   min-height: 85px;
   padding: 22px 40px;
   display: flex;
@@ -332,8 +332,8 @@ body[data-screen="home"] main {
   color: #5c735f;
 }
 footer {
-  max-width: 1200px;
-  margin: auto;
+  width: 100%;
+  max-width: none;
   padding: 14px 40px 18px;
   display: flex;
   justify-content: space-between;
