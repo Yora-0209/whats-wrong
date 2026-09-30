@@ -98,15 +98,19 @@
               placeholder="今天发生了什么？或者，只写下此刻的感受。"
             ></textarea>
             <div class="compose-foot">
-              <span id="count">0 / 2000</span
-              ><button class="primary" id="send" type="submit">
+              <div class="compose-tools">
+                <span id="count">0 / 2000</span>
+                <button id="voice" type="button">说给纸听</button>
+              </div>
+              <button class="primary" id="send" type="submit">
                 说好了 ↗
               </button>
             </div>
+            <p id="speech-status" role="status"></p>
           </form>
           <div id="waiting" hidden>
             <span class="waiting-dots" aria-hidden="true">· · ·</span>
-            正在生成回应
+            咋啦正在回应
             <button id="cancel-chat" class="text-button">取消等待</button>
           </div>
           <p id="chat-status" role="status"></p>
@@ -114,6 +118,10 @@
             <button id="continue" class="primary">我还想说一点</button
             ><button id="activity">听一会儿</button>
           </div>
+          <section id="suggestion-stickers" class="suggestion-stickers" hidden>
+            <p>如果愿意，挑一张带走</p>
+            <div id="sticker-grid" class="sticker-grid"></div>
+          </section>
           <div id="error-actions" class="actions" hidden>
             <button id="retry">重新试试</button
             ><button id="write-more">继续写</button>
@@ -127,14 +135,13 @@
           </section>
           <div class="paper-bottom">
             <button id="finish" class="text-button">先到这里</button
-            ><span>由 AI 回应 · 你可以随时结束</span>
+            ><span>由“咋啦”回应 · 你可以随时结束</span>
           </div>
         </article>
         <details class="privacy">
           <summary>关于这张纸与隐私</summary>
           <p>
-            点击“说好了”会将这次对话的最近内容发送给 AI
-            服务。未选择保存时，对话只在当前页面内存中；刷新或不保存结束后会丢失。保存的日记只在当前浏览器，未加密。服务提供方的数据处理仍遵循其自身政策。
+            点击“说好了”会将这次对话的最近内容发送给回应服务。使用语音输入时，录音由浏览器或系统处理。未选择保存时，对话只在当前页面内存中；刷新或不保存结束后会丢失。保存的日记只在当前浏览器，未加密。服务提供方的数据处理仍遵循其自身政策。
           </p>
         </details>
       </section>

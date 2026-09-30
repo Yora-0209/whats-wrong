@@ -405,6 +405,102 @@ textarea::placeholder {
   font: 11px system-ui;
   color: #748269;
 }
+.compose-tools {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.compose-tools #voice {
+  min-height: 38px;
+  padding: 5px 13px;
+  border-style: dashed;
+  font-size: 14px;
+}
+.compose-tools #voice[aria-pressed="true"] {
+  color: var(--red);
+  background: #f2e6dc;
+}
+#speech-status {
+  min-height: 1.8em;
+  margin: 7px 0 0;
+  color: #657b65;
+  font-size: 13px;
+}
+.suggestion-stickers {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px dashed var(--line);
+}
+.suggestion-stickers > p {
+  margin: 0 0 15px;
+  font-size: 15px;
+  color: #5d715e;
+}
+.sticker-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+.sticker {
+  background: #f2e6bd;
+  border: 1px solid #d8c997;
+  box-shadow: 3px 4px 0 #e5dfcf;
+  transform: rotate(-1deg);
+}
+.sticker:nth-child(2) {
+  background: #e7e3d5;
+  border-color: #c9c2ac;
+  transform: rotate(1.2deg);
+}
+.sticker:nth-child(3) {
+  background: #dfe8d6;
+  border-color: #bdcbae;
+  transform: rotate(-0.5deg);
+}
+.sticker-toggle {
+  width: 100%;
+  min-height: 112px;
+  padding: 17px;
+  border: 0;
+  text-align: left;
+  background: transparent !important;
+}
+.sticker-toggle small,
+.sticker-toggle strong {
+  display: block;
+}
+.sticker-toggle small {
+  margin-bottom: 9px;
+  font-size: 11px;
+  color: #657b65;
+}
+.sticker-toggle strong {
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.45;
+}
+.sticker-toggle[aria-expanded="true"] strong::after {
+  content: " －";
+}
+.sticker-toggle[aria-expanded="false"] strong::after {
+  content: " ＋";
+}
+.sticker-detail {
+  padding: 14px 17px 18px;
+  border-top: 1px dashed #aeb59e;
+  font-size: 13px;
+  line-height: 1.65;
+}
+.sticker-detail p {
+  margin: 0 0 9px;
+}
+.sticker-detail a {
+  display: block;
+  margin-top: 7px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
 .paper-bottom {
   display: flex;
   align-items: center;
@@ -679,6 +775,20 @@ dialog button {
   }
   .paper-bottom span {
     max-width: 130px;
+  }
+  .compose-foot {
+    align-items: flex-end;
+  }
+  .compose-tools {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .sticker-grid {
+    grid-template-columns: 1fr;
+  }
+  .sticker-toggle {
+    min-height: 88px;
   }
   .audio-paper {
     padding: 25px;

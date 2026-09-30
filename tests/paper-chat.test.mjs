@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   validateMessages,
   validateReply,
+  resolveSuggestions,
   explicitDanger,
 } from "../lib/paper-chat.js";
 import handler from "../api/paper-chat.js";
@@ -30,10 +31,26 @@ test("rejects system-role injection, excessive input and malformed replies", () 
   assert.throws(() => validateReply({ safety: "ok", echo: 42 }));
   assert.throws(() => validateReply({ safety: "unknown", echo: "hi" }));
   assert.equal(
-    validateReply({ safety: "ok", echo: "已经改了好几次，还不太满意。" })
+    validateReply({
+      safety: "ok",
+      echo: "已经改了好几次，还不太满意。",
+      picks: { music: "rest", movie: "perfect-days", action: "stretch" },
+    })
       .safety,
     "ok",
   );
+});
+test("turns constrained picks into real, safe suggestion cards", () => {
+  const selected = resolveSuggestions(
+    { music: "bright", movie: "soul", action: "note-one" },
+    "今天很开心",
+  );
+  assert.equal(selected.music.songs[0][0], "日不落");
+  assert.equal(selected.movie.title, "心灵奇旅");
+  assert.ok(selected.action.detail.length > 0);
+  const fallback = resolveSuggestions({ music: "invented" }, "今天很累");
+  assert.equal(fallback.music.songs[0][0], "Weightless");
+  assert.equal(fallback.movie.title, "完美的日子");
 });
 test("explicit danger receives support even without provider configuration", async () => {
   const r = response();

@@ -105,11 +105,23 @@ const { chromium } = require("playwright");
         body: JSON.stringify({
           safety: "ok",
           echo: "改了好几遍，还是很难对自己满意。你可以先把这份疲惫写在这里。",
+          suggestions: {
+            music: {
+              title: "适合慢慢停下来的声音",
+              query: "睡前 放松 纯音乐",
+              songs: [["Weightless", "Marconi Union"]],
+            },
+            movie: { title: "完美的日子", note: "慢慢看一会儿。" },
+            action: { title: "松一松肩膀", detail: "把肩膀抬起再放下。" },
+          },
         }),
       });
     });
     await page.locator("#retry").click();
     await page.locator("#continue").waitFor();
+    assert.equal(await page.locator(".sticker").count(), 3);
+    await page.locator(".sticker").first().locator("button").click();
+    assert.equal(await page.locator(".sticker").first().locator("a").count(), 2);
     await page.locator("#continue").click();
     await page.locator("#feeling").fill("我怕最后还是让人失望。");
     await page.locator("#send").click();

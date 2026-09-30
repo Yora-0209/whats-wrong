@@ -46,6 +46,7 @@ export default async function handler(req, res) {
     const data = await upstream.json();
     const reply = validateReply(
       JSON.parse(data.choices?.[0]?.message?.content),
+      messages.at(-1).content,
     );
     return res.status(200).json(reply);
   } catch {

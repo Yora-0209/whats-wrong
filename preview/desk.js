@@ -9,7 +9,13 @@ let screen = "home",
   sessionId = crypto.randomUUID(),
   sessionAt = Date.now(),
   saved = false,
+  suggestions = null,
   audioReturn = "home";
+const SpeechRecognition =
+  window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null,
+  listening = false,
+  speechBase = "";
 const audio = new Audio();
 audio.loop = true;
 audio.preload = "none";
@@ -33,6 +39,12 @@ function stopRequest() {
   $("waiting").hidden = true;
   $("send").disabled = false;
 }
+function updateComposerCount() {
+  $("count").textContent = `${$("feeling").value.length} / 2000`;
+}
+function stopListening() {
+  if (listening) recognition?.stop();
+}
 function showScreen(next) {
   if (screen === "listen" && next !== "listen") stopAudio();
   screen = next;
@@ -52,7 +64,7 @@ function renderMessages() {
     const node = document.createElement("p");
     node.className = "utterance" + (m.role === "assistant" ? " ai" : "");
     const label = document.createElement("span");
-    label.textContent = m.role === "user" ? "你写下的" : "AI 回应";
+    label.textContent = m.role === "user" ? "你写下的" : "咋啦回应";
     node.append(label, document.createTextNode(m.content));
     $("conversation").append(node);
   }
@@ -60,24 +72,118 @@ function renderMessages() {
   $("reply-actions").hidden = crisis || messages.at(-1)?.role !== "assistant";
   $("error-actions").hidden = !failed;
 }
+function searchLink(query, type = 1) {
+  return `https://music.163.com/#/search/m/?s=${encodeURIComponent(query)}&type=${type}`;
+}
+function sticker(title, kicker, fill) {
+  const card = document.createElement("article");
+  card.className = "sticker";
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "sticker-toggle";
+  button.setAttribute("aria-expanded", "false");
+  const small = document.createElement("small");
+  small.textContent = kicker;
+  const strong = document.createElement("strong");
+  strong.textContent = title;
+  button.append(small, strong);
+  const detail = document.createElement("div");
+  detail.className = "sticker-detail";
+  detail.hidden = true;
+  fill(detail);
+  button.onclick = () => {
+    const open = detail.hidden;
+    detail.hidden = !open;
+    button.setAttribute("aria-expanded", String(open));
+  };
+  card.append(button, detail);
+  return card;
+}
+function renderSuggestions(value) {
+  const valid =
+    value &&
+    typeof value.music?.title === "string" &&
+    typeof value.music?.query === "string" &&
+    Array.isArray(value.music?.songs) &&
+    value.music.songs.every(
+      (song) =>
+        Array.isArray(song) &&
+        song.length === 2 &&
+        song.every((part) => typeof part === "string"),
+    ) &&
+    typeof value.movie?.title === "string" &&
+    typeof value.movie?.note === "string" &&
+    typeof value.action?.title === "string" &&
+    typeof value.action?.detail === "string";
+  suggestions = valid ? value : null;
+  const section = $("suggestion-stickers");
+  const grid = $("sticker-grid");
+  grid.replaceChildren();
+  section.hidden = !suggestions || crisis;
+  if (section.hidden) return;
+  const music = suggestions.music;
+  grid.append(
+    sticker(music.title, "听三首歌", (detail) => {
+      for (const [title, artist] of music.songs) {
+        const link = document.createElement("a");
+        link.href = searchLink(`${title} ${artist}`);
+        link.target = "_blank";
+        link.rel = "noopener";
+        link.textContent = `${title} · ${artist}`;
+        detail.append(link);
+      }
+      const more = document.createElement("a");
+      more.href = searchLink(music.query, 1000);
+      more.target = "_blank";
+      more.rel = "noopener";
+      more.textContent = "在网易云找相似歌单 ↗";
+      detail.append(more);
+    }),
+  );
+  const movie = suggestions.movie;
+  grid.append(
+    sticker(movie.title, "看一部电影", (detail) => {
+      const note = document.createElement("p");
+      note.textContent = movie.note;
+      const link = document.createElement("a");
+      link.href = `https://search.douban.com/movie/subject_search?search_text=${encodeURIComponent(movie.title)}`;
+      link.target = "_blank";
+      link.rel = "noopener";
+      link.textContent = "看看电影介绍 ↗";
+      detail.append(note, link);
+    }),
+  );
+  const action = suggestions.action;
+  grid.append(
+    sticker(action.title, "现在做件小事", (detail) => {
+      const p = document.createElement("p");
+      p.textContent = action.detail;
+      detail.append(p);
+    }),
+  );
+}
 function showComposer() {
+  renderSuggestions(null);
   $("write-form").hidden = false;
   $("reply-actions").hidden = true;
   $("feeling").focus();
 }
 function reset() {
+  stopListening();
   stopRequest();
   messages = [];
   failed = false;
   crisis = false;
   saved = false;
+  suggestions = null;
   sessionId = crypto.randomUUID();
   sessionAt = Date.now();
   $("feeling").value = "";
-  $("count").textContent = "0 / 2000";
+  updateComposerCount();
   $("send").textContent = "说好了 ↗";
   $("write-form").hidden = false;
   renderMessages();
+  renderSuggestions(null);
   announce("");
 }
 function recentContext(history) {
@@ -123,6 +229,7 @@ async function requestReply() {
     crisis = crisis || data.safety === "crisis";
     saved = false;
     renderMessages();
+    renderSuggestions(data.suggestions);
     if (crisis) {
       $("write-form").hidden = false;
       $("send").textContent = "继续说";
@@ -151,8 +258,64 @@ $("write").onclick = () => {
 };
 $("feeling").oninput = () => {
   saved = false;
-  $("count").textContent = `${$("feeling").value.length} / 2000`;
+  updateComposerCount();
 };
+if (!SpeechRecognition) {
+  $("voice").disabled = true;
+  $("voice").textContent = "此浏览器暂不支持听写";
+} else {
+  recognition = new SpeechRecognition();
+  recognition.lang = "zh-CN";
+  recognition.continuous = false;
+  recognition.interimResults = true;
+  recognition.onstart = () => {
+    listening = true;
+    speechBase = $("feeling").value.trim();
+    $("voice").textContent = "停止听写";
+    $("voice").setAttribute("aria-pressed", "true");
+    $("speech-status").textContent = "正在听，你可以慢慢说……";
+  };
+  recognition.onresult = (event) => {
+    let transcript = "";
+    for (let i = 0; i < event.results.length; i++)
+      transcript += event.results[i][0].transcript;
+    $("feeling").value = `${speechBase}${speechBase && transcript ? "\n" : ""}${transcript}`.slice(
+      0,
+      2000,
+    );
+    saved = false;
+    updateComposerCount();
+  };
+  recognition.onerror = (event) => {
+    const denied = ["not-allowed", "service-not-allowed"].includes(event.error);
+    $("speech-status").textContent = denied
+      ? "没有获得麦克风权限。可以在浏览器设置中允许后再试。"
+      : event.error === "no-speech"
+        ? "刚才没有听清，可以再试一次。"
+        : "听写暂时没有成功，可以继续打字。";
+  };
+  recognition.onend = () => {
+    listening = false;
+    $("voice").textContent = "说给纸听";
+    $("voice").setAttribute("aria-pressed", "false");
+    if ($("speech-status").textContent.startsWith("正在听"))
+      $("speech-status").textContent = $("feeling").value.trim()
+        ? "已经写在纸上了，你可以继续修改。"
+        : "没有听到内容，可以再试一次。";
+  };
+  $("voice").onclick = () => {
+    if (listening) {
+      recognition.stop();
+      return;
+    }
+    $("speech-status").textContent = "";
+    try {
+      recognition.start();
+    } catch {
+      $("speech-status").textContent = "听写正在准备，请稍后再试。";
+    }
+  };
+}
 $("write-form").onsubmit = (event) => {
   event.preventDefault();
   if (request) return;
@@ -164,7 +327,7 @@ $("write-form").onsubmit = (event) => {
   }
   messages.push({ role: "user", content: text });
   $("feeling").value = "";
-  $("count").textContent = "0 / 2000";
+  updateComposerCount();
   saved = false;
   renderMessages();
   requestReply();
@@ -183,6 +346,7 @@ $("cancel-chat").onclick = () => {
   announce("已停止等待，文字还在。");
 };
 function finish() {
+  stopListening();
   if (!hasWriting()) {
     reset();
     showScreen("home");
