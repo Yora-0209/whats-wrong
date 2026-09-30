@@ -273,9 +273,14 @@ textarea::placeholder {
   border: 0;
   color: var(--red);
 }
-#status {
+#status,
+#art-status {
   font-size: 15px;
   white-space: pre-line;
+}
+#art-status {
+  min-height: 1.5em;
+  margin: 10px 0 0;
 }
 .error {
   color: #963e29;

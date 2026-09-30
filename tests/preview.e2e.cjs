@@ -156,7 +156,7 @@ const { chromium } = require("playwright");
     await page.locator("#scene").fill("草稿纸和铅笔");
     await page.locator("#generate").click();
     await page.waitForFunction(() =>
-      document.querySelector("#status").textContent.includes("尚未配置"),
+      document.querySelector("#art-status").textContent.includes("尚未配置"),
     );
     assert.ok(
       (await page.locator("#text").inputValue()).includes("今天改了三遍方案"),

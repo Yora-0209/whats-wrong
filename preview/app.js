@@ -10,6 +10,10 @@ const status = (message, error = false) => {
   $("status").textContent = message;
   $("status").classList.toggle("error", error);
 };
+const artStatus = (message, error = false) => {
+  $("art-status").textContent = message;
+  $("art-status").classList.toggle("error", error);
+};
 function openDB() {
   return new Promise((resolve, reject) => {
     const r = indexedDB.open("zala-paper-preview-v1", 1);
@@ -71,6 +75,7 @@ function show(entry) {
   renderArt();
   renderHistory();
   renderList();
+  artStatus("");
   status("");
 }
 function renderHistory() {
@@ -239,7 +244,7 @@ $("art-toggle").onclick = () => {
 };
 $("cancel-art").onclick = () => {
   cancel();
-  status("已停止等待，文字和已有配图没有改变。");
+  artStatus("已停止等待，文字和已有配图没有改变。");
 };
 $("remove-art").onclick = () => {
   cancel();
@@ -247,12 +252,12 @@ $("remove-art").onclick = () => {
   dirty = true;
   editRevision++;
   renderArt();
-  status("已移除当前配图，保存后生效。");
+  artStatus("已移除当前配图，保存后生效。");
 };
 $("suggest").onclick = async () => {
   const source = $("text").value.trim();
   if (!source) {
-    status("先写下今天发生的事。", true);
+    artStatus("先写下今天发生的事。", true);
     return;
   }
   cancel();
@@ -260,7 +265,7 @@ $("suggest").onclick = async () => {
   controller = new AbortController();
   $("suggest").disabled = true;
   $("cancel-art").hidden = false;
-  status("正在根据原文整理画面……");
+  artStatus("正在根据原文整理画面……");
   try {
     const brief = await api("/api/art-brief", { text: source });
     if (token !== requestVersion) return;
@@ -271,9 +276,9 @@ $("suggest").onclick = async () => {
       `依据原文：“${brief.basis}”${brief.abstract ? " · 这是一种抽象表达" : ""}`;
     dirty = true;
     editRevision++;
-    status("请检查画面描述。确认后再点击生成小画。");
+    artStatus("请检查画面描述。确认后再点击生成小画。");
   } catch (error) {
-    if (token === requestVersion) status(error.message, true);
+    if (token === requestVersion) artStatus(error.message, true);
   } finally {
     if (token === requestVersion) cancel();
   }
@@ -281,7 +286,7 @@ $("suggest").onclick = async () => {
 $("generate").onclick = async () => {
   const scene = $("scene").value.trim();
   if (!scene) {
-    status("先描述你希望画下来的物件或形状。", true);
+    artStatus("先描述你希望画下来的物件或形状。", true);
     $("scene").focus();
     return;
   }
@@ -290,13 +295,13 @@ $("generate").onclick = async () => {
   controller = new AbortController();
   $("generate").disabled = true;
   $("cancel-art").hidden = false;
-  status("正在画下这个画面……");
+  artStatus("正在画下这个画面……");
   const waiting = [
     setTimeout(() => {
-      if (token === requestVersion) status("还在慢慢上色，请再等一会儿……");
+      if (token === requestVersion) artStatus("还在慢慢上色，请再等一会儿……");
     }, 12000),
     setTimeout(() => {
-      if (token === requestVersion) status("快画好了，正在收尾……");
+      if (token === requestVersion) artStatus("快画好了，正在收尾……");
     }, 30000),
   ];
   try {
@@ -316,9 +321,9 @@ $("generate").onclick = async () => {
     dirty = true;
     editRevision++;
     renderArt();
-    status("小画已生成。点击“保存这一页”，将它与文字一起留下。");
+    artStatus("小画已生成。点击“保存这一页”，将它与文字一起留下。");
   } catch (error) {
-    if (token === requestVersion) status(error.message, true);
+    if (token === requestVersion) artStatus(error.message, true);
   } finally {
     waiting.forEach(clearTimeout);
     if (token === requestVersion) cancel();
