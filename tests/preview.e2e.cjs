@@ -40,7 +40,7 @@ const { chromium } = require("playwright");
     });
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
-    const base = "http://127.0.0.1:5173/preview/";
+    const base = "http://127.0.0.1:5173/";
     await page.goto(base);
     await page.evaluate(() => document.fonts.ready);
     await page.locator(".garden").waitFor();

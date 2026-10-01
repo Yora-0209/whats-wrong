@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>窗边的情绪日记 · 咋啦</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="./assets/brand/favicon-32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./assets/brand/apple-touch-icon.png" />
+    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./journal-extras.css" />
+    <link rel="stylesheet" href="./music.css" />
+  </head>
+  <body>
+    <header>
+      <a href="./" id="home">窗边的一张纸</a><span>情绪日记</span
+      ><a href="./original/">打开原版</a>
+    </header>
+    <main>
+      <section class="intro journal-intro">
+        <div>
+          <p class="eyebrow">PAGES YOU CHOSE TO KEEP</p>
+          <h1>Journal</h1>
+          <p>当时发生的事，留在这里。<br />想回看时，再翻开。</p>
+          <button class="primary" id="new">新写一页 ↗</button
+          ><button class="quiet" id="demo">看看一条示例</button>
+        </div>
+        <figure>
+          <img src="./assets/notebook.png" alt="翻开的绿色日记本" />
+          <figcaption>情绪日记</figcaption>
+        </figure>
+      </section>
+      <section class="journal" aria-label="情绪日记">
+        <aside>
+          <h2>情绪日记</h2>
+          <p class="muted">这里留着你选择保存的事情。</p>
+          <div id="entries"></div>
+          <section class="calendar" aria-label="情绪日历">
+            <div class="calendar-nav"><button id="month-prev" aria-label="上个月">←</button><strong id="month-label"></strong><button id="month-next" aria-label="下个月">→</button></div>
+            <div class="calendar-week" aria-hidden="true"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
+            <div id="calendar-days"></div>
+            <button id="all-days">查看全部记录</button><p id="day-label" role="status"></p>
+          </section>
+          <div class="tools">
+            <button id="export">导出记录</button
+            ><button id="import">复制原版记录</button>
+          </div>
+          <small
+            >保存在当前浏览器，未加密。清除网站数据会移除记录，建议定期导出。</small
+          >
+        </aside>
+        <article class="paper">
+          <div class="paper-top">
+            <span id="date">TODAY, ON PAPER</span
+            ><span id="badge">新的一页</span>
+          </div>
+          <details id="saved-conversation" hidden>
+            <summary>当时的对话</summary>
+            <div id="saved-messages"></div>
+          </details>
+          <form id="form">
+            <label for="title">这一天的小标题</label
+            ><input
+              id="title"
+              maxlength="40"
+              placeholder="可以不写标题"
+            /><label for="text">今天发生了什么？</label
+            ><textarea
+              id="text"
+              maxlength="2000"
+              rows="6"
+              placeholder="从一件具体的小事写起，也可以只写此刻的感受。"
+            ></textarea>
+            <div class="actions">
+              <button class="primary" type="submit">保存文字</button
+              ><button type="button" id="art-toggle">给这段话配张小画</button>
+            </div>
+          </form>
+          <section id="art-panel" hidden>
+            <h3>这张小画，画什么？</h3>
+            <button id="suggest">帮我想想画什么</button
+            ><label for="scene">描述你心中的画面</label
+            ><textarea
+              id="scene"
+              rows="3"
+              maxlength="300"
+              placeholder="例如：几张改过的草稿纸，旁边放着一支短铅笔。"
+            ></textarea>
+            <p id="basis" class="muted"></p>
+            <div class="actions">
+              <button id="generate" class="primary">生成小画</button
+              ><button id="cancel-art" hidden>取消等待</button
+              ><button id="remove-art">只留文字</button>
+            </div>
+            <p id="art-status" role="status" aria-live="polite"></p>
+            <div id="art-progress" hidden><div class="pencil-track" role="progressbar" aria-label="小画正在生成，完成比例未知"><span></span></div><p id="art-elapsed"></p></div>
+          </section>
+          <figure id="artwork" hidden>
+            <img id="art-image" alt="这条记录的小画" />
+            <figcaption id="art-caption"></figcaption>
+          </figure>
+          <div class="seal">
+            <label for="revisit">什么时候再看看（可选）</label
+            ><input type="date" id="revisit" /><small
+              >到期后在日记中提示，不发送通知。</small
+            >
+          </div>
+          <div class="actions bottom">
+            <button id="save-all" class="primary">保存这一页</button
+            ><button id="delete" class="danger" hidden>删除这条记录</button>
+          </div>
+          <p id="status" role="status" aria-live="polite"></p>
+        </article>
+      </section>
+    </main>
+    <footer>不想写，也可以先关上。<span>只留你选择保存的内容。</span></footer>
+    <script type="module" src="./app.js"></script>
+    <script type="module" src="./music.js"></script>
+    <dialog id="memory-card" aria-labelledby="memory-title"><button id="memory-close" aria-label="关闭卡片">×</button><time id="memory-date"></time><h2 id="memory-title"></h2><img id="memory-image" alt="这一天的小画" hidden /><p id="memory-text"></p><button id="memory-edit">继续编辑这一页 ↗</button></dialog>
+  </body>
+</html>

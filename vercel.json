@@ -3,9 +3,9 @@
   "framework": null,
   "redirects": [
     {
-      "source": "/",
-      "destination": "/preview/",
-      "permanent": false
+      "source": "/preview/:path*",
+      "destination": "/:path*",
+      "permanent": true
     }
   ],
   "functions": {
